@@ -24,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATABASE = BASE_DIR / "products.db"
 UPLOAD_DIR = BASE_DIR / "uploads"
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+ORDER_STATUSES = ("受付", "準備中", "発送済み")
 
 SEED_PRODUCTS = [
     (
@@ -103,6 +104,7 @@ def init_db():
             postal_code TEXT,
             address TEXT,
             phone TEXT,
+            status TEXT NOT NULL DEFAULT '受付',
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
         """
@@ -115,6 +117,9 @@ def init_db():
     for column in ("recipient_name", "postal_code", "address", "phone"):
         if column not in order_columns:
             conn.execute(f"ALTER TABLE orders ADD COLUMN {column} TEXT")
+    if "status" not in order_columns:
+        conn.execute("ALTER TABLE orders ADD COLUMN status TEXT")
+        conn.execute("UPDATE orders SET status = '受付' WHERE status IS NULL")
 
     conn.execute(
         """
@@ -321,9 +326,9 @@ def create_order(items, total, user_id, shipping):
         """
         INSERT INTO orders (
             total, created_at, user_id,
-            recipient_name, postal_code, address, phone
+            recipient_name, postal_code, address, phone, status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             total,
@@ -333,6 +338,7 @@ def create_order(items, total, user_id, shipping):
             shipping["postal_code"],
             shipping["address"],
             shipping["phone"],
+            "受付",
         ),
     )
     order_id = cursor.lastrowid
@@ -361,7 +367,7 @@ def get_order(order_id):
     order = conn.execute(
         """
         SELECT id, total, created_at, user_id,
-               recipient_name, postal_code, address, phone
+               recipient_name, postal_code, address, phone, status
         FROM orders
         WHERE id = ?
         """,
@@ -391,7 +397,7 @@ def get_orders_for_user(user_id):
     orders = conn.execute(
         """
         SELECT id, total, created_at, user_id,
-               recipient_name, postal_code, address, phone
+               recipient_name, postal_code, address, phone, status
         FROM orders
         WHERE user_id = ?
         ORDER BY id DESC
@@ -412,6 +418,46 @@ def get_orders_for_user(user_id):
         result.append({"order": order, "order_items": items})
     conn.close()
     return result
+
+
+def get_all_orders():
+    conn = get_db()
+    orders = conn.execute(
+        """
+        SELECT id, total, created_at, user_id,
+               recipient_name, postal_code, address, phone, status
+        FROM orders
+        ORDER BY id DESC
+        """
+    ).fetchall()
+    result = []
+    for order in orders:
+        items = conn.execute(
+            """
+            SELECT name, price, quantity, subtotal
+            FROM order_items
+            WHERE order_id = ?
+            ORDER BY id
+            """,
+            (order["id"],),
+        ).fetchall()
+        result.append({"order": order, "order_items": items})
+    conn.close()
+    return result
+
+
+def update_order_status(order_id, status):
+    if status not in ORDER_STATUSES:
+        return False
+    conn = get_db()
+    cursor = conn.execute(
+        "UPDATE orders SET status = ? WHERE id = ?",
+        (status, order_id),
+    )
+    conn.commit()
+    updated = cursor.rowcount > 0
+    conn.close()
+    return updated
 
 
 def build_cart_items():
@@ -805,6 +851,33 @@ def orders():
         "orders.html",
         orders=get_orders_for_user(user_id),
     )
+
+
+@app.route("/admin/orders")
+def admin_orders():
+    blocked = require_admin()
+    if blocked is not None:
+        return blocked
+
+    return render_template(
+        "admin_orders.html",
+        orders=get_all_orders(),
+        statuses=ORDER_STATUSES,
+    )
+
+
+@app.route("/admin/orders/<int:order_id>/status", methods=["POST"])
+def admin_order_status(order_id):
+    blocked = require_admin()
+    if blocked is not None:
+        return blocked
+
+    status = request.form.get("status", "").strip()
+    if update_order_status(order_id, status):
+        flash("注文ステータスを更新しました。", "success")
+    else:
+        flash("ステータスの更新に失敗しました。", "error")
+    return redirect(url_for("admin_orders"))
 
 
 if __name__ == "__main__":

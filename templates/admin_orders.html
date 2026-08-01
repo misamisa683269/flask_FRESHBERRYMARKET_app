@@ -1,15 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}自分の注文 | FRESHBERRYMARKET{% endblock %}
+{% block title %}注文管理 | FRESHBERRYMARKET{% endblock %}
 
 {% block content %}
-<h1>自分の注文</h1>
+<h1>注文管理</h1>
+<p class="muted">管理者向け：全注文のステータスを変更できます。</p>
 
 {% if orders %}
   {% for entry in orders %}
   <section class="order-card">
     <h2>注文番号: {{ entry.order.id }}</h2>
-    <p class="muted">日時: {{ entry.order.created_at }}</p>
+    <p class="muted">日時: {{ entry.order.created_at }} / ユーザーID: {{ entry.order.user_id }}</p>
     <p>ステータス: <strong>{{ entry.order.status or '受付' }}</strong></p>
     {% if entry.order.recipient_name %}
     <p>
@@ -27,6 +28,26 @@
       {% endfor %}
     </ul>
     <p class="total">合計: {{ entry.order.total }}円</p>
+    <form
+      class="inline-form"
+      action="{{ url_for('admin_order_status', order_id=entry.order.id) }}"
+      method="post"
+    >
+      <label>
+        ステータス変更:
+        <select name="status">
+          {% for status in statuses %}
+          <option
+            value="{{ status }}"
+            {% if (entry.order.status or '受付') == status %}selected{% endif %}
+          >
+            {{ status }}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit">更新</button>
+    </form>
   </section>
   {% endfor %}
 {% else %}
