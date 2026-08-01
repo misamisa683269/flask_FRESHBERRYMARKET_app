@@ -9,7 +9,10 @@
     <p><a href="/">トップへ戻る</a></p>
     <ul>
       {% for product in products %}
-      <li>{{ product.name }} — {{ product.price }}円</li>
+      <li>
+        <a href="/products/{{ product.id }}">{{ product.name }}</a>
+        — {{ product.price }}円
+      </li>
       {% endfor %}
     </ul>
   </body>
