@@ -116,6 +116,18 @@ def get_product(product_id):
     return product
 
 
+def create_product(name, price, description):
+    conn = get_db()
+    cursor = conn.execute(
+        "INSERT INTO products (name, price, description) VALUES (?, ?, ?)",
+        (name, price, description),
+    )
+    conn.commit()
+    product_id = cursor.lastrowid
+    conn.close()
+    return product_id
+
+
 def create_user(username, password):
     conn = get_db()
     try:
@@ -302,6 +314,26 @@ def logout():
 @app.route("/products")
 def products():
     return render_template("products.html", products=get_all_products())
+
+
+@app.route("/products/new", methods=["GET", "POST"])
+def product_new():
+    if current_user_id() is None:
+        return redirect(url_for("login"))
+
+    error = None
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        price = request.form.get("price", type=int)
+        description = request.form.get("description", "").strip()
+
+        if not name or price is None or price < 0 or not description:
+            error = "商品名・価格（0以上）・説明を入力してください。"
+        else:
+            create_product(name, price, description)
+            return redirect(url_for("products"))
+
+    return render_template("product_new.html", error=error)
 
 
 @app.route("/products/<int:product_id>")

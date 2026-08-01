@@ -4,6 +4,7 @@
   <a href="{{ url_for('cart') }}">カート</a>
   <a href="{{ url_for('orders') }}">自分の注文</a>
   {% if is_logged_in %}
+  <a href="{{ url_for('product_new') }}">商品を追加</a>
   <span class="nav-user">{{ current_username }}さん</span>
   <a href="{{ url_for('logout') }}">ログアウト</a>
   {% else %}
