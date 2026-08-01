@@ -32,6 +32,29 @@ def get_product(product_id):
     return None
 
 
+def build_cart_items():
+    cart_data = session.get("cart", {})
+    items = []
+    total = 0
+
+    for product_id, quantity in cart_data.items():
+        product = get_product(int(product_id))
+        if product is None:
+            continue
+        subtotal = product["price"] * quantity
+        total += subtotal
+        items.append(
+            {
+                "name": product["name"],
+                "price": product["price"],
+                "quantity": quantity,
+                "subtotal": subtotal,
+            }
+        )
+
+    return items, total
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -66,26 +89,33 @@ def cart_add(product_id):
 
 @app.route("/cart")
 def cart():
-    cart_data = session.get("cart", {})
-    items = []
-    total = 0
-
-    for product_id, quantity in cart_data.items():
-        product = get_product(int(product_id))
-        if product is None:
-            continue
-        subtotal = product["price"] * quantity
-        total += subtotal
-        items.append(
-            {
-                "name": product["name"],
-                "price": product["price"],
-                "quantity": quantity,
-                "subtotal": subtotal,
-            }
-        )
-
+    items, total = build_cart_items()
     return render_template("cart.html", items=items, total=total)
+
+
+@app.route("/order", methods=["POST"])
+def order():
+    items, total = build_cart_items()
+    if not items:
+        return redirect(url_for("cart"))
+
+    session["last_order"] = {"items": items, "total": total}
+    session.pop("cart", None)
+
+    return redirect(url_for("order_complete"))
+
+
+@app.route("/order/complete")
+def order_complete():
+    last_order = session.get("last_order")
+    if last_order is None:
+        return redirect(url_for("products"))
+
+    return render_template(
+        "order_complete.html",
+        items=last_order["items"],
+        total=last_order["total"],
+    )
 
 
 if __name__ == "__main__":

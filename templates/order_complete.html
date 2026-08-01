@@ -2,13 +2,12 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <title>カート | FRESHBERRYMARKET</title>
+    <title>注文完了 | FRESHBERRYMARKET</title>
   </head>
   <body>
-    <h1>カート</h1>
-    <p><a href="/products">商品一覧へ戻る</a></p>
+    <h1>注文完了</h1>
+    <p>ご注文ありがとうございました。</p>
 
-    {% if items %}
     <ul>
       {% for item in items %}
       <li>
@@ -18,11 +17,7 @@
       {% endfor %}
     </ul>
     <p>合計: {{ total }}円</p>
-    <form action="/order" method="post">
-      <button type="submit">注文する</button>
-    </form>
-    {% else %}
-    <p>カートは空です。</p>
-    {% endif %}
+
+    <p><a href="/products">商品一覧へ戻る</a></p>
   </body>
 </html>
