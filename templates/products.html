@@ -40,6 +40,11 @@
         {{ product.name }}
       </a>
       <span class="price"> — {{ product.price }}円</span>
+      {% if product.stock is none or product.stock < 1 %}
+      <span class="muted">（売り切れ）</span>
+      {% else %}
+      <span class="muted">（在庫 {{ product.stock }}）</span>
+      {% endif %}
     </div>
   </li>
   {% endfor %}

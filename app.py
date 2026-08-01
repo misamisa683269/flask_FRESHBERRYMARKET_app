@@ -30,16 +30,19 @@ SEED_PRODUCTS = [
         "ブルーベリー 500g",
         1200,
         "収穫したての生ブルーベリー。そのまま食べてもおいしいです。",
+        10,
     ),
     (
         "ブルーベリー 1kg",
         2200,
         "たっぷり1kg。冷凍保存にもおすすめです。",
+        10,
     ),
     (
         "ジャムセット",
         1800,
         "自家製ブルーベリージャムの詰め合わせです。",
+        10,
     ),
 ]
 
@@ -60,7 +63,8 @@ def init_db():
             name TEXT NOT NULL,
             price INTEGER NOT NULL,
             description TEXT NOT NULL,
-            image_filename TEXT
+            image_filename TEXT,
+            stock INTEGER NOT NULL DEFAULT 10
         )
         """
     )
@@ -69,6 +73,9 @@ def init_db():
     ]
     if "image_filename" not in product_columns:
         conn.execute("ALTER TABLE products ADD COLUMN image_filename TEXT")
+    if "stock" not in product_columns:
+        conn.execute("ALTER TABLE products ADD COLUMN stock INTEGER")
+        conn.execute("UPDATE products SET stock = 10 WHERE stock IS NULL")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
@@ -118,7 +125,10 @@ def init_db():
     count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
     if count == 0:
         conn.executemany(
-            "INSERT INTO products (name, price, description) VALUES (?, ?, ?)",
+            """
+            INSERT INTO products (name, price, description, stock)
+            VALUES (?, ?, ?, ?)
+            """,
             SEED_PRODUCTS,
         )
     conn.commit()
@@ -129,7 +139,7 @@ def get_all_products():
     conn = get_db()
     products = conn.execute(
         """
-        SELECT id, name, price, description, image_filename
+        SELECT id, name, price, description, image_filename, stock
         FROM products
         ORDER BY id
         """
@@ -143,7 +153,7 @@ def search_products(keyword):
     like = f"%{keyword}%"
     products = conn.execute(
         """
-        SELECT id, name, price, description, image_filename
+        SELECT id, name, price, description, image_filename, stock
         FROM products
         WHERE name LIKE ? OR description LIKE ?
         ORDER BY id
@@ -158,7 +168,7 @@ def get_product(product_id):
     conn = get_db()
     product = conn.execute(
         """
-        SELECT id, name, price, description, image_filename
+        SELECT id, name, price, description, image_filename, stock
         FROM products
         WHERE id = ?
         """,
@@ -193,14 +203,14 @@ def remove_product_image_file(filename):
         path.unlink()
 
 
-def create_product(name, price, description, image_filename=None):
+def create_product(name, price, description, stock, image_filename=None):
     conn = get_db()
     cursor = conn.execute(
         """
-        INSERT INTO products (name, price, description, image_filename)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO products (name, price, description, image_filename, stock)
+        VALUES (?, ?, ?, ?, ?)
         """,
-        (name, price, description, image_filename),
+        (name, price, description, image_filename, stock),
     )
     conn.commit()
     product_id = cursor.lastrowid
@@ -208,25 +218,25 @@ def create_product(name, price, description, image_filename=None):
     return product_id
 
 
-def update_product(product_id, name, price, description, image_filename=None):
+def update_product(product_id, name, price, description, stock, image_filename=None):
     conn = get_db()
     if image_filename is None:
         conn.execute(
             """
             UPDATE products
-            SET name = ?, price = ?, description = ?
+            SET name = ?, price = ?, description = ?, stock = ?
             WHERE id = ?
             """,
-            (name, price, description, product_id),
+            (name, price, description, stock, product_id),
         )
     else:
         conn.execute(
             """
             UPDATE products
-            SET name = ?, price = ?, description = ?, image_filename = ?
+            SET name = ?, price = ?, description = ?, image_filename = ?, stock = ?
             WHERE id = ?
             """,
-            (name, price, description, image_filename, product_id),
+            (name, price, description, image_filename, stock, product_id),
         )
     conn.commit()
     conn.close()
@@ -270,6 +280,16 @@ def get_user_by_username(username):
 
 def create_order(items, total, user_id, shipping):
     conn = get_db()
+
+    for item in items:
+        row = conn.execute(
+            "SELECT stock FROM products WHERE id = ?",
+            (item["id"],),
+        ).fetchone()
+        if row is None or row["stock"] is None or row["stock"] < item["quantity"]:
+            conn.close()
+            return None
+
     cursor = conn.execute(
         """
         INSERT INTO orders (
@@ -299,6 +319,11 @@ def create_order(items, total, user_id, shipping):
             for item in items
         ],
     )
+    for item in items:
+        conn.execute(
+            "UPDATE products SET stock = stock - ? WHERE id = ?",
+            (item["quantity"], item["id"]),
+        )
     conn.commit()
     conn.close()
     return order_id
@@ -380,6 +405,7 @@ def build_cart_items():
                 "price": product["price"],
                 "quantity": quantity,
                 "subtotal": subtotal,
+                "stock": product["stock"] if product["stock"] is not None else 0,
             }
         )
 
@@ -477,14 +503,22 @@ def product_new():
         name = request.form.get("name", "").strip()
         price = request.form.get("price", type=int)
         description = request.form.get("description", "").strip()
+        stock = request.form.get("stock", type=int)
         image_result = save_product_image(request.files.get("image"))
 
-        if not name or price is None or price < 0 or not description:
-            error = "商品名・価格（0以上）・説明を入力してください。"
+        if (
+            not name
+            or price is None
+            or price < 0
+            or not description
+            or stock is None
+            or stock < 0
+        ):
+            error = "商品名・価格（0以上）・説明・在庫（0以上）を入力してください。"
         elif image_result is False:
             error = "画像は png / jpg / jpeg / gif / webp のみアップロードできます。"
         else:
-            create_product(name, price, description, image_result)
+            create_product(name, price, description, stock, image_result)
             flash("商品を追加しました。", "success")
             return redirect(url_for("products"))
 
@@ -513,18 +547,28 @@ def product_edit(product_id):
         name = request.form.get("name", "").strip()
         price = request.form.get("price", type=int)
         description = request.form.get("description", "").strip()
+        stock = request.form.get("stock", type=int)
         image_result = save_product_image(request.files.get("image"))
 
-        if not name or price is None or price < 0 or not description:
-            error = "商品名・価格（0以上）・説明を入力してください。"
+        if (
+            not name
+            or price is None
+            or price < 0
+            or not description
+            or stock is None
+            or stock < 0
+        ):
+            error = "商品名・価格（0以上）・説明・在庫（0以上）を入力してください。"
         elif image_result is False:
             error = "画像は png / jpg / jpeg / gif / webp のみアップロードできます。"
         else:
             if image_result:
                 remove_product_image_file(product["image_filename"])
-                update_product(product_id, name, price, description, image_result)
+                update_product(
+                    product_id, name, price, description, stock, image_result
+                )
             else:
-                update_product(product_id, name, price, description)
+                update_product(product_id, name, price, description, stock)
             flash("商品を更新しました。", "success")
             return redirect(url_for("product_detail", product_id=product_id))
 
@@ -556,13 +600,24 @@ def cart_add(product_id):
     if product is None:
         abort(404)
 
+    stock = product["stock"] if product["stock"] is not None else 0
     quantity = request.form.get("quantity", type=int)
     if quantity is None or quantity < 1:
         quantity = 1
 
     cart = session.get("cart", {})
     key = str(product_id)
-    cart[key] = cart.get(key, 0) + quantity
+    new_quantity = cart.get(key, 0) + quantity
+
+    if stock < 1:
+        flash("この商品は売り切れです。", "error")
+        return redirect(url_for("product_detail", product_id=product_id))
+
+    if new_quantity > stock:
+        flash(f"在庫が足りません（在庫: {stock}）。", "error")
+        return redirect(url_for("product_detail", product_id=product_id))
+
+    cart[key] = new_quantity
     session["cart"] = cart
 
     flash(f"カートに {quantity} 個追加しました。", "success")
@@ -581,6 +636,7 @@ def cart_update(product_id):
     if product is None:
         abort(404)
 
+    stock = product["stock"] if product["stock"] is not None else 0
     quantity = request.form.get("quantity", type=int)
     cart = session.get("cart", {})
     key = str(product_id)
@@ -588,6 +644,8 @@ def cart_update(product_id):
     if quantity is None or quantity < 1:
         cart.pop(key, None)
         flash("カートから商品を削除しました。", "success")
+    elif quantity > stock:
+        flash(f"在庫が足りません（在庫: {stock}）。", "error")
     else:
         cart[key] = quantity
         flash("数量を更新しました。", "success")
@@ -654,6 +712,10 @@ def order():
         )
 
     order_id = create_order(items, total, user_id, shipping)
+    if order_id is None:
+        flash("在庫が足りない商品があるため、注文できませんでした。", "error")
+        return redirect(url_for("cart"))
+
     session["last_order_id"] = order_id
     session.pop("cart", None)
     session.pop("last_order", None)
