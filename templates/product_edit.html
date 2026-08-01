@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}商品を編集 | FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<h1>商品を編集</h1>
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+<form method="post">
+  <div class="form-field">
+    <label>
+      商品名:
+      <input type="text" name="name" value="{{ product.name }}" required />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
+      価格（円）:
+      <input type="number" name="price" value="{{ product.price }}" min="0" required />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
+      説明:
+      <input type="text" name="description" value="{{ product.description }}" required />
+    </label>
+  </div>
+  <button type="submit">更新する</button>
+  <a class="button button-light" href="{{ url_for('product_detail', product_id=product.id) }}">
+    キャンセル
+  </a>
+</form>
+{% endblock %}

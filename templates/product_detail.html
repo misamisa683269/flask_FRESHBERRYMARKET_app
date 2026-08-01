@@ -9,4 +9,19 @@
 <form action="{{ url_for('cart_add', product_id=product.id) }}" method="post">
   <button type="submit">カートに入れる</button>
 </form>
+
+{% if is_logged_in %}
+<p class="inline-form" style="margin-top: 1rem">
+  <a class="button button-light" href="{{ url_for('product_edit', product_id=product.id) }}">
+    編集
+  </a>
+</p>
+<form
+  action="{{ url_for('product_delete', product_id=product.id) }}"
+  method="post"
+  onsubmit="return confirm('この商品を削除しますか？');"
+>
+  <button type="submit" class="button-secondary">削除</button>
+</form>
+{% endif %}
 {% endblock %}

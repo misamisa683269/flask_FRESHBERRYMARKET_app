@@ -128,6 +128,27 @@ def create_product(name, price, description):
     return product_id
 
 
+def update_product(product_id, name, price, description):
+    conn = get_db()
+    conn.execute(
+        """
+        UPDATE products
+        SET name = ?, price = ?, description = ?
+        WHERE id = ?
+        """,
+        (name, price, description, product_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_product(product_id):
+    conn = get_db()
+    conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
+    conn.commit()
+    conn.close()
+
+
 def create_user(username, password):
     conn = get_db()
     try:
@@ -342,6 +363,48 @@ def product_detail(product_id):
     if product is None:
         abort(404)
     return render_template("product_detail.html", product=product)
+
+
+@app.route("/products/<int:product_id>/edit", methods=["GET", "POST"])
+def product_edit(product_id):
+    if current_user_id() is None:
+        return redirect(url_for("login"))
+
+    product = get_product(product_id)
+    if product is None:
+        abort(404)
+
+    error = None
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        price = request.form.get("price", type=int)
+        description = request.form.get("description", "").strip()
+
+        if not name or price is None or price < 0 or not description:
+            error = "商品名・価格（0以上）・説明を入力してください。"
+        else:
+            update_product(product_id, name, price, description)
+            return redirect(url_for("product_detail", product_id=product_id))
+
+    return render_template("product_edit.html", product=product, error=error)
+
+
+@app.route("/products/<int:product_id>/delete", methods=["POST"])
+def product_delete(product_id):
+    if current_user_id() is None:
+        return redirect(url_for("login"))
+
+    product = get_product(product_id)
+    if product is None:
+        abort(404)
+
+    delete_product(product_id)
+
+    cart = session.get("cart", {})
+    cart.pop(str(product_id), None)
+    session["cart"] = cart
+
+    return redirect(url_for("products"))
 
 
 @app.route("/cart/add/<int:product_id>", methods=["POST"])
