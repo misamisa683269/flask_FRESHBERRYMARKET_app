@@ -6,7 +6,9 @@
   </head>
   <body>
     <h1>注文完了</h1>
+    {% include "_nav.html" %}
     <p>ご注文ありがとうございました。</p>
+    <p>注文番号: {{ order.id }}（{{ order.created_at }}）</p>
 
     <ul>
       {% for item in items %}
@@ -17,7 +19,5 @@
       {% endfor %}
     </ul>
     <p>合計: {{ total }}円</p>
-
-    <p><a href="/products">商品一覧へ戻る</a></p>
   </body>
 </html>

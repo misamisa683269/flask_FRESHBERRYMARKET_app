@@ -6,21 +6,35 @@
   </head>
   <body>
     <h1>カート</h1>
-    <p><a href="/products">商品一覧へ戻る</a></p>
+    {% include "_nav.html" %}
 
     {% if items %}
     <ul>
       {% for item in items %}
       <li>
-        {{ item.name }} — {{ item.price }}円 × {{ item.quantity }}
+        {{ item.name }} — {{ item.price }}円
         = {{ item.subtotal }}円
+        <form action="/cart/update/{{ item.id }}" method="post" style="display: inline">
+          <label>
+            数量:
+            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" />
+          </label>
+          <button type="submit">更新</button>
+        </form>
+        <form action="/cart/remove/{{ item.id }}" method="post" style="display: inline">
+          <button type="submit">削除</button>
+        </form>
       </li>
       {% endfor %}
     </ul>
     <p>合計: {{ total }}円</p>
+    {% if is_logged_in %}
     <form action="/order" method="post">
       <button type="submit">注文する</button>
     </form>
+    {% else %}
+    <p>注文するには <a href="/login">ログイン</a> が必要です。</p>
+    {% endif %}
     {% else %}
     <p>カートは空です。</p>
     {% endif %}

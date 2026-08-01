@@ -6,10 +6,7 @@
   </head>
   <body>
     <h1>商品一覧</h1>
-    <p>
-      <a href="/">トップへ戻る</a> |
-      <a href="/cart">カートを見る</a>
-    </p>
+    {% include "_nav.html" %}
     <ul>
       {% for product in products %}
       <li>

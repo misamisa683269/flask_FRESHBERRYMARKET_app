@@ -1,0 +1,13 @@
+<p>
+  <a href="/">トップ</a> |
+  <a href="/products">商品一覧</a> |
+  <a href="/cart">カート</a> |
+  <a href="/orders">自分の注文</a>
+  {% if is_logged_in %}
+  | {{ current_username }}さん |
+  <a href="/logout">ログアウト</a>
+  {% else %}
+  | <a href="/login">ログイン</a> |
+  <a href="/register">新規登録</a>
+  {% endif %}
+</p>
