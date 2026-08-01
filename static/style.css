@@ -290,6 +290,28 @@ label {
   margin-bottom: 1.1rem;
 }
 
+.postal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.postal-row input {
+  width: min(100%, 12rem);
+  flex: 1 1 auto;
+}
+
+.postal-message {
+  margin: 0.4rem 0 0;
+  min-height: 1.25em;
+  font-size: 0.92rem;
+}
+
+.postal-message-error {
+  color: var(--danger-text, #9b1c1c);
+}
+
 .search-form {
   margin-bottom: 1.35rem;
   padding-bottom: 1.1rem;

@@ -19,6 +19,7 @@ from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 import os
+import stripe
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
@@ -126,7 +127,7 @@ def init_db():
     ]
     if "user_id" not in order_columns:
         conn.execute("ALTER TABLE orders ADD COLUMN user_id INTEGER")
-    for column in ("recipient_name", "postal_code", "address", "phone", "email"):
+    for column in ("recipient_name", "postal_code", "address", "phone", "email", "stripe_session_id"):
         if column not in order_columns:
             conn.execute(f"ALTER TABLE orders ADD COLUMN {column} TEXT")
     if "status" not in order_columns:
@@ -450,8 +451,28 @@ def send_order_confirmation_email(to_email, subject, body):
     return True
 
 
-def create_order(items, subtotal, shipping_fee, total, user_id, shipping):
+def get_stripe_secret_key():
+    key = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+    if not key or key.startswith("sk_test_your_") or "ここに" in key:
+        return None
+    if key.startswith("sk_live_"):
+        return None
+    if not key.startswith("sk_test_"):
+        return None
+    return key
+
+
+def create_order(items, subtotal, shipping_fee, total, user_id, shipping, stripe_session_id=None):
     conn = get_db()
+
+    if stripe_session_id:
+        existing = conn.execute(
+            "SELECT id FROM orders WHERE stripe_session_id = ?",
+            (stripe_session_id,),
+        ).fetchone()
+        if existing is not None:
+            conn.close()
+            return existing["id"]
 
     for item in items:
         row = conn.execute(
@@ -467,9 +488,9 @@ def create_order(items, subtotal, shipping_fee, total, user_id, shipping):
         INSERT INTO orders (
             total, created_at, user_id,
             recipient_name, postal_code, address, phone, email, status,
-            subtotal, shipping_fee, stock_restored
+            subtotal, shipping_fee, stock_restored, stripe_session_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             total,
@@ -484,6 +505,7 @@ def create_order(items, subtotal, shipping_fee, total, user_id, shipping):
             subtotal,
             shipping_fee,
             0,
+            stripe_session_id,
         ),
     )
     order_id = cursor.lastrowid
@@ -512,6 +534,22 @@ def create_order(items, subtotal, shipping_fee, total, user_id, shipping):
     conn.commit()
     conn.close()
     return order_id
+
+
+def get_order_by_stripe_session_id(stripe_session_id):
+    conn = get_db()
+    order = conn.execute(
+        """
+        SELECT id, total, created_at, user_id,
+               recipient_name, postal_code, address, phone, email, status,
+               subtotal, shipping_fee, stock_restored, stripe_session_id
+        FROM orders
+        WHERE stripe_session_id = ?
+        """,
+        (stripe_session_id,),
+    ).fetchone()
+    conn.close()
+    return order
 
 
 def restore_order_stock(conn, order_id):
@@ -1332,9 +1370,122 @@ def order():
             error="氏名・郵便番号・住所・電話番号・メールアドレスをすべて入力してください。",
         )
 
-    order_id = create_order(items, subtotal, shipping_fee, total, user_id, shipping)
+    for item in items:
+        product = get_product(item["id"])
+        stock = (
+            product["stock"] if product is not None and product["stock"] is not None else 0
+        )
+        if product is None or stock < item["quantity"]:
+            flash("在庫が足りない商品があるため、決済に進めません。", "error")
+            return redirect(url_for("cart"))
+
+    stripe_key = get_stripe_secret_key()
+    if stripe_key is None:
+        flash(
+            "Stripe のテスト用シークレットキー（sk_test_...）が .env に設定されていません。",
+            "error",
+        )
+        return redirect(url_for("checkout"))
+
+    stripe.api_key = stripe_key
+    session["pending_shipping"] = shipping
+    session["pending_total"] = total
+
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            mode="payment",
+            customer_email=shipping["email"],
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": "jpy",
+                        "unit_amount": total,
+                        "product_data": {
+                            "name": "FRESHBERRYMARKET ご注文",
+                            "description": f"商品小計 {subtotal}円 + 送料 {shipping_fee}円",
+                        },
+                    },
+                    "quantity": 1,
+                }
+            ],
+            success_url=url_for("order_success", _external=True)
+            + "?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url=url_for("payment_cancel", _external=True),
+        )
+    except Exception as exc:
+        flash(f"Stripe 決済ページの作成に失敗しました: {exc}", "error")
+        return redirect(url_for("checkout"))
+
+    return redirect(checkout_session.url, code=303)
+
+
+@app.route("/order/success")
+def order_success():
+    user_id = current_user_id()
+    if user_id is None:
+        flash("ログインが必要です。", "error")
+        return redirect(url_for("login"))
+
+    stripe_session_id = request.args.get("session_id", "").strip()
+    if not stripe_session_id:
+        flash("決済情報が見つかりません。", "error")
+        return redirect(url_for("cart"))
+
+    existing = get_order_by_stripe_session_id(stripe_session_id)
+    if existing is not None:
+        session["last_order_id"] = existing["id"]
+        flash("このお支払いはすでに注文済みです。", "success")
+        return redirect(url_for("order_complete"))
+
+    stripe_key = get_stripe_secret_key()
+    if stripe_key is None:
+        flash("Stripe キーが設定されていません。", "error")
+        return redirect(url_for("checkout"))
+
+    stripe.api_key = stripe_key
+    try:
+        checkout_session = stripe.checkout.Session.retrieve(stripe_session_id)
+    except Exception as exc:
+        flash(f"決済情報の確認に失敗しました: {exc}", "error")
+        return redirect(url_for("cart"))
+
+    if checkout_session.payment_status != "paid":
+        flash("支払いが完了していません。", "error")
+        return redirect(url_for("checkout"))
+
+    shipping = session.get("pending_shipping")
+    if not shipping:
+        flash("配送先情報が見つかりません。もう一度お試しください。", "error")
+        return redirect(url_for("checkout"))
+
+    items, subtotal, shipping_fee, total = cart_summary()
+    if not items:
+        flash("カートが空です。もう一度お試しください。", "error")
+        return redirect(url_for("products"))
+
+    pending_total = session.get("pending_total")
+    if pending_total is not None and pending_total != total:
+        flash("カート内容が変わったため、注文を確定できませんでした。", "error")
+        return redirect(url_for("cart"))
+
+    if (
+        checkout_session.amount_total is not None
+        and checkout_session.amount_total != total
+    ):
+        flash("支払金額と注文合計が一致しません。", "error")
+        return redirect(url_for("cart"))
+
+    order_id = create_order(
+        items,
+        subtotal,
+        shipping_fee,
+        total,
+        user_id,
+        shipping,
+        stripe_session_id=stripe_session_id,
+    )
     if order_id is None:
-        flash("在庫が足りない商品があるため、注文できませんでした。", "error")
+        flash("在庫が足りない商品があるため、注文を確定できませんでした。", "error")
         return redirect(url_for("cart"))
 
     try:
@@ -1351,9 +1502,17 @@ def order():
     session["last_order_id"] = order_id
     session.pop("cart", None)
     session.pop("last_order", None)
+    session.pop("pending_shipping", None)
+    session.pop("pending_total", None)
 
-    flash("注文が完了しました。", "success")
+    flash("お支払いと注文が完了しました。", "success")
     return redirect(url_for("order_complete"))
+
+
+@app.route("/order/payment-cancel")
+def payment_cancel():
+    flash("支払いがキャンセルされました。", "error")
+    return redirect(url_for("checkout"))
 
 
 @app.route("/order/complete")

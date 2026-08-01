@@ -41,15 +41,27 @@
     </label>
   </div>
   <div class="form-field">
-    <label>
-      郵便番号:
-      <input type="text" name="postal_code" required />
-    </label>
+    <label for="postal_code">郵便番号:</label>
+    <div class="postal-row">
+      <input
+        type="text"
+        id="postal_code"
+        name="postal_code"
+        required
+        inputmode="numeric"
+        autocomplete="postal-code"
+        placeholder="例: 100-0001"
+      />
+      <button type="button" id="postal-search" class="button button-light">
+        住所検索
+      </button>
+    </div>
+    <p id="postal-message" class="muted postal-message" aria-live="polite"></p>
   </div>
   <div class="form-field">
     <label>
       住所:
-      <input type="text" name="address" required />
+      <input type="text" id="address" name="address" required />
     </label>
   </div>
   <div class="form-field">
@@ -64,7 +76,66 @@
       <input type="email" name="email" required />
     </label>
   </div>
-  <button type="submit">注文を確定する</button>
+  <button type="submit">お支払いに進む（Stripe）</button>
   <a class="button button-light" href="{{ url_for('cart') }}">カートへ戻る</a>
 </form>
+<p class="muted" style="margin-top: 1rem">
+  テスト決済画面（Stripe）へ移動します。カード情報はこのサイトには保存されません。
+</p>
+<script>
+  (function () {
+    var postalInput = document.getElementById("postal_code");
+    var addressInput = document.getElementById("address");
+    var searchButton = document.getElementById("postal-search");
+    var messageEl = document.getElementById("postal-message");
+
+    function setMessage(text, isError) {
+      messageEl.textContent = text || "";
+      messageEl.classList.toggle("postal-message-error", Boolean(isError));
+      messageEl.classList.toggle("muted", !isError);
+    }
+
+    function normalizeZip(value) {
+      return String(value || "").replace(/[^\d]/g, "");
+    }
+
+    searchButton.addEventListener("click", function () {
+      var zipcode = normalizeZip(postalInput.value);
+      if (zipcode.length !== 7) {
+        setMessage("郵便番号は7桁で入力してください。", true);
+        return;
+      }
+
+      setMessage("検索中…", false);
+      searchButton.disabled = true;
+
+      fetch(
+        "https://zipcloud.ibsnet.co.jp/api/search?zipcode=" +
+          encodeURIComponent(zipcode)
+      )
+        .then(function (res) {
+          if (!res.ok) {
+            throw new Error("network");
+          }
+          return res.json();
+        })
+        .then(function (data) {
+          if (!data || data.status !== 200 || !data.results || !data.results.length) {
+            setMessage("住所が見つかりませんでした。", true);
+            return;
+          }
+          var r = data.results[0];
+          addressInput.value =
+            (r.address1 || "") + (r.address2 || "") + (r.address3 || "");
+          setMessage("住所を入力しました。続きを入力してください。", false);
+        })
+        .catch(function () {
+          setMessage("住所の取得に失敗しました。もう一度お試しください。", true);
+        })
+        .finally(function () {
+          searchButton.disabled = false;
+        });
+    });
+  })();
+</script>
 {% endblock %}
