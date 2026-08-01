@@ -1,4 +1,4 @@
-# FRESHBERRYMARKET（採れたてを、届ける。）
+# FRESHBERRYMARKET（Farm to Palm）
 
 ブルーベリー関連商品の簡易 EC アプリです。  
 Flask + SQLite で動く、学習用の最小構成です。
