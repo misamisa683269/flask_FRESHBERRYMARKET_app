@@ -7,7 +7,7 @@
 {% if error %}
 <p class="error">{{ error }}</p>
 {% endif %}
-<form method="post">
+<form method="post" enctype="multipart/form-data">
   <div class="form-field">
     <label>
       商品名:
@@ -24,6 +24,12 @@
     <label>
       説明:
       <input type="text" name="description" required />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
+      画像（任意）:
+      <input type="file" name="image" accept=".png,.jpg,.jpeg,.gif,.webp,image/*" />
     </label>
   </div>
   <button type="submit">追加する</button>

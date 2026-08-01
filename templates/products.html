@@ -6,11 +6,22 @@
 <h1>商品一覧</h1>
 <ul class="product-list">
   {% for product in products %}
-  <li>
-    <a class="product-name" href="{{ url_for('product_detail', product_id=product.id) }}">
-      {{ product.name }}
+  <li class="product-item">
+    {% if product.image_filename %}
+    <a href="{{ url_for('product_detail', product_id=product.id) }}">
+      <img
+        class="product-image-thumb"
+        src="{{ url_for('uploaded_file', filename=product.image_filename) }}"
+        alt="{{ product.name }}"
+      />
     </a>
-    <span class="price"> — {{ product.price }}円</span>
+    {% endif %}
+    <div>
+      <a class="product-name" href="{{ url_for('product_detail', product_id=product.id) }}">
+        {{ product.name }}
+      </a>
+      <span class="price"> — {{ product.price }}円</span>
+    </div>
   </li>
   {% endfor %}
 </ul>

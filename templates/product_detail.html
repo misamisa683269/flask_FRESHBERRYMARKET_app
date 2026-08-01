@@ -4,6 +4,15 @@
 
 {% block content %}
 <h1>{{ product.name }}</h1>
+{% if product.image_filename %}
+<p>
+  <img
+    class="product-image"
+    src="{{ url_for('uploaded_file', filename=product.image_filename) }}"
+    alt="{{ product.name }}"
+  />
+</p>
+{% endif %}
 <p class="price">価格: {{ product.price }}円</p>
 <p>{{ product.description }}</p>
 <form action="{{ url_for('cart_add', product_id=product.id) }}" method="post">

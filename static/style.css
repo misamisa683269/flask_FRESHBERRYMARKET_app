@@ -156,6 +156,30 @@ a:hover {
   border-bottom: 1px solid var(--line);
 }
 
+.product-item {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.product-image-thumb {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  display: block;
+}
+
+.product-image {
+  max-width: 100%;
+  width: min(100%, 420px);
+  height: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  display: block;
+}
+
 .product-list li:last-child,
 .cart-list li:last-child,
 .order-items li:last-child {

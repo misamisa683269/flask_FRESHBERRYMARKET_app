@@ -1,15 +1,29 @@
 import sqlite3
+import uuid
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    abort,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    session,
+    url_for,
+)
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "freshberrymarket-dev-secret"
 
 BASE_DIR = Path(__file__).resolve().parent
 DATABASE = BASE_DIR / "products.db"
+UPLOAD_DIR = BASE_DIR / "uploads"
+ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 
 SEED_PRODUCTS = [
     (
@@ -37,6 +51,7 @@ def get_db():
 
 
 def init_db():
+    UPLOAD_DIR.mkdir(exist_ok=True)
     conn = get_db()
     conn.execute(
         """
@@ -44,10 +59,16 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             price INTEGER NOT NULL,
-            description TEXT NOT NULL
+            description TEXT NOT NULL,
+            image_filename TEXT
         )
         """
     )
+    product_columns = [
+        row[1] for row in conn.execute("PRAGMA table_info(products)").fetchall()
+    ]
+    if "image_filename" not in product_columns:
+        conn.execute("ALTER TABLE products ADD COLUMN image_filename TEXT")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
@@ -100,7 +121,11 @@ def init_db():
 def get_all_products():
     conn = get_db()
     products = conn.execute(
-        "SELECT id, name, price, description FROM products ORDER BY id"
+        """
+        SELECT id, name, price, description, image_filename
+        FROM products
+        ORDER BY id
+        """
     ).fetchall()
     conn.close()
     return products
@@ -109,18 +134,50 @@ def get_all_products():
 def get_product(product_id):
     conn = get_db()
     product = conn.execute(
-        "SELECT id, name, price, description FROM products WHERE id = ?",
+        """
+        SELECT id, name, price, description, image_filename
+        FROM products
+        WHERE id = ?
+        """,
         (product_id,),
     ).fetchone()
     conn.close()
     return product
 
 
-def create_product(name, price, description):
+def save_product_image(file_storage):
+    if file_storage is None or not file_storage.filename:
+        return None
+
+    original = secure_filename(file_storage.filename)
+    if not original:
+        return None
+
+    ext = Path(original).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return False
+
+    filename = f"{uuid.uuid4().hex}{ext}"
+    file_storage.save(UPLOAD_DIR / filename)
+    return filename
+
+
+def remove_product_image_file(filename):
+    if not filename:
+        return
+    path = UPLOAD_DIR / filename
+    if path.is_file():
+        path.unlink()
+
+
+def create_product(name, price, description, image_filename=None):
     conn = get_db()
     cursor = conn.execute(
-        "INSERT INTO products (name, price, description) VALUES (?, ?, ?)",
-        (name, price, description),
+        """
+        INSERT INTO products (name, price, description, image_filename)
+        VALUES (?, ?, ?, ?)
+        """,
+        (name, price, description, image_filename),
     )
     conn.commit()
     product_id = cursor.lastrowid
@@ -128,25 +185,38 @@ def create_product(name, price, description):
     return product_id
 
 
-def update_product(product_id, name, price, description):
+def update_product(product_id, name, price, description, image_filename=None):
     conn = get_db()
-    conn.execute(
-        """
-        UPDATE products
-        SET name = ?, price = ?, description = ?
-        WHERE id = ?
-        """,
-        (name, price, description, product_id),
-    )
+    if image_filename is None:
+        conn.execute(
+            """
+            UPDATE products
+            SET name = ?, price = ?, description = ?
+            WHERE id = ?
+            """,
+            (name, price, description, product_id),
+        )
+    else:
+        conn.execute(
+            """
+            UPDATE products
+            SET name = ?, price = ?, description = ?, image_filename = ?
+            WHERE id = ?
+            """,
+            (name, price, description, image_filename, product_id),
+        )
     conn.commit()
     conn.close()
 
 
 def delete_product(product_id):
+    product = get_product(product_id)
     conn = get_db()
     conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
     conn.commit()
     conn.close()
+    if product is not None:
+        remove_product_image_file(product["image_filename"])
 
 
 def create_user(username, password):
@@ -335,6 +405,11 @@ def logout():
     return redirect(url_for("index"))
 
 
+@app.route("/uploads/<path:filename>")
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_DIR, filename)
+
+
 @app.route("/products")
 def products():
     return render_template("products.html", products=get_all_products())
@@ -350,11 +425,14 @@ def product_new():
         name = request.form.get("name", "").strip()
         price = request.form.get("price", type=int)
         description = request.form.get("description", "").strip()
+        image_result = save_product_image(request.files.get("image"))
 
         if not name or price is None or price < 0 or not description:
             error = "商品名・価格（0以上）・説明を入力してください。"
+        elif image_result is False:
+            error = "画像は png / jpg / jpeg / gif / webp のみアップロードできます。"
         else:
-            create_product(name, price, description)
+            create_product(name, price, description, image_result)
             flash("商品を追加しました。", "success")
             return redirect(url_for("products"))
 
@@ -383,11 +461,18 @@ def product_edit(product_id):
         name = request.form.get("name", "").strip()
         price = request.form.get("price", type=int)
         description = request.form.get("description", "").strip()
+        image_result = save_product_image(request.files.get("image"))
 
         if not name or price is None or price < 0 or not description:
             error = "商品名・価格（0以上）・説明を入力してください。"
+        elif image_result is False:
+            error = "画像は png / jpg / jpeg / gif / webp のみアップロードできます。"
         else:
-            update_product(product_id, name, price, description)
+            if image_result:
+                remove_product_image_file(product["image_filename"])
+                update_product(product_id, name, price, description, image_result)
+            else:
+                update_product(product_id, name, price, description)
             flash("商品を更新しました。", "success")
             return redirect(url_for("product_detail", product_id=product_id))
 
