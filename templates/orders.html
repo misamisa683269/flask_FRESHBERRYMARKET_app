@@ -26,6 +26,15 @@
       </li>
       {% endfor %}
     </ul>
+    <p>小計: {{ entry.order.subtotal if entry.order.subtotal is not none else entry.order.total }}円</p>
+    <p>
+      送料:
+      {% if (entry.order.shipping_fee or 0) == 0 %}
+      無料
+      {% else %}
+      {{ entry.order.shipping_fee }}円
+      {% endif %}
+    </p>
     <p class="total">合計: {{ entry.order.total }}円</p>
   </section>
   {% endfor %}

@@ -25,6 +25,8 @@ DATABASE = BASE_DIR / "products.db"
 UPLOAD_DIR = BASE_DIR / "uploads"
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 ORDER_STATUSES = ("受付", "準備中", "発送済み")
+SHIPPING_FEE = 500
+FREE_SHIPPING_THRESHOLD = 5000
 
 SEED_PRODUCTS = [
     (
@@ -105,6 +107,8 @@ def init_db():
             address TEXT,
             phone TEXT,
             status TEXT NOT NULL DEFAULT '受付',
+            subtotal INTEGER,
+            shipping_fee INTEGER,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
         """
@@ -120,6 +124,20 @@ def init_db():
     if "status" not in order_columns:
         conn.execute("ALTER TABLE orders ADD COLUMN status TEXT")
         conn.execute("UPDATE orders SET status = '受付' WHERE status IS NULL")
+    if "subtotal" not in order_columns:
+        conn.execute("ALTER TABLE orders ADD COLUMN subtotal INTEGER")
+    if "shipping_fee" not in order_columns:
+        conn.execute("ALTER TABLE orders ADD COLUMN shipping_fee INTEGER")
+        conn.execute(
+            "UPDATE orders SET shipping_fee = 0 WHERE shipping_fee IS NULL"
+        )
+        conn.execute(
+            """
+            UPDATE orders
+            SET subtotal = total
+            WHERE subtotal IS NULL
+            """
+        )
 
     conn.execute(
         """
@@ -310,7 +328,7 @@ def get_user_by_username(username):
     return user
 
 
-def create_order(items, total, user_id, shipping):
+def create_order(items, subtotal, shipping_fee, total, user_id, shipping):
     conn = get_db()
 
     for item in items:
@@ -326,9 +344,10 @@ def create_order(items, total, user_id, shipping):
         """
         INSERT INTO orders (
             total, created_at, user_id,
-            recipient_name, postal_code, address, phone, status
+            recipient_name, postal_code, address, phone, status,
+            subtotal, shipping_fee
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             total,
@@ -339,6 +358,8 @@ def create_order(items, total, user_id, shipping):
             shipping["address"],
             shipping["phone"],
             "受付",
+            subtotal,
+            shipping_fee,
         ),
     )
     order_id = cursor.lastrowid
@@ -367,7 +388,8 @@ def get_order(order_id):
     order = conn.execute(
         """
         SELECT id, total, created_at, user_id,
-               recipient_name, postal_code, address, phone, status
+               recipient_name, postal_code, address, phone, status,
+               subtotal, shipping_fee
         FROM orders
         WHERE id = ?
         """,
@@ -397,7 +419,8 @@ def get_orders_for_user(user_id):
     orders = conn.execute(
         """
         SELECT id, total, created_at, user_id,
-               recipient_name, postal_code, address, phone, status
+               recipient_name, postal_code, address, phone, status,
+               subtotal, shipping_fee
         FROM orders
         WHERE user_id = ?
         ORDER BY id DESC
@@ -425,7 +448,8 @@ def get_all_orders():
     orders = conn.execute(
         """
         SELECT id, total, created_at, user_id,
-               recipient_name, postal_code, address, phone, status
+               recipient_name, postal_code, address, phone, status,
+               subtotal, shipping_fee
         FROM orders
         ORDER BY id DESC
         """
@@ -463,26 +487,41 @@ def update_order_status(order_id, status):
 def build_cart_items():
     cart_data = session.get("cart", {})
     items = []
-    total = 0
+    subtotal = 0
 
     for product_id, quantity in cart_data.items():
         product = get_product(int(product_id))
         if product is None:
             continue
-        subtotal = product["price"] * quantity
-        total += subtotal
+        item_subtotal = product["price"] * quantity
+        subtotal += item_subtotal
         items.append(
             {
                 "id": product["id"],
                 "name": product["name"],
                 "price": product["price"],
                 "quantity": quantity,
-                "subtotal": subtotal,
+                "subtotal": item_subtotal,
                 "stock": product["stock"] if product["stock"] is not None else 0,
             }
         )
 
-    return items, total
+    return items, subtotal
+
+
+def calc_shipping_fee(subtotal):
+    if subtotal <= 0:
+        return 0
+    if subtotal >= FREE_SHIPPING_THRESHOLD:
+        return 0
+    return SHIPPING_FEE
+
+
+def cart_summary():
+    items, subtotal = build_cart_items()
+    shipping_fee = calc_shipping_fee(subtotal)
+    total = subtotal + shipping_fee
+    return items, subtotal, shipping_fee, total
 
 
 def current_user_id():
@@ -720,8 +759,15 @@ def cart_add(product_id):
 
 @app.route("/cart")
 def cart():
-    items, total = build_cart_items()
-    return render_template("cart.html", items=items, total=total)
+    items, subtotal, shipping_fee, total = cart_summary()
+    return render_template(
+        "cart.html",
+        items=items,
+        subtotal=subtotal,
+        shipping_fee=shipping_fee,
+        total=total,
+        free_shipping_threshold=FREE_SHIPPING_THRESHOLD,
+    )
 
 
 @app.route("/cart/update/<int:product_id>", methods=["POST"])
@@ -770,12 +816,20 @@ def checkout():
         flash("注文するにはログインが必要です。", "error")
         return redirect(url_for("login"))
 
-    items, total = build_cart_items()
+    items, subtotal, shipping_fee, total = cart_summary()
     if not items:
         flash("カートが空です。", "error")
         return redirect(url_for("cart"))
 
-    return render_template("checkout.html", items=items, total=total, error=None)
+    return render_template(
+        "checkout.html",
+        items=items,
+        subtotal=subtotal,
+        shipping_fee=shipping_fee,
+        total=total,
+        free_shipping_threshold=FREE_SHIPPING_THRESHOLD,
+        error=None,
+    )
 
 
 @app.route("/order", methods=["POST"])
@@ -785,7 +839,7 @@ def order():
         flash("注文するにはログインが必要です。", "error")
         return redirect(url_for("login"))
 
-    items, total = build_cart_items()
+    items, subtotal, shipping_fee, total = cart_summary()
     if not items:
         flash("カートが空です。", "error")
         return redirect(url_for("cart"))
@@ -801,11 +855,14 @@ def order():
         return render_template(
             "checkout.html",
             items=items,
+            subtotal=subtotal,
+            shipping_fee=shipping_fee,
             total=total,
+            free_shipping_threshold=FREE_SHIPPING_THRESHOLD,
             error="氏名・郵便番号・住所・電話番号をすべて入力してください。",
         )
 
-    order_id = create_order(items, total, user_id, shipping)
+    order_id = create_order(items, subtotal, shipping_fee, total, user_id, shipping)
     if order_id is None:
         flash("在庫が足りない商品があるため、注文できませんでした。", "error")
         return redirect(url_for("cart"))
@@ -837,7 +894,6 @@ def order_complete():
         "order_complete.html",
         order=order_row,
         items=items,
-        total=order_row["total"],
     )
 
 
