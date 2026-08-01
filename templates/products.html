@@ -45,6 +45,20 @@
       {% else %}
       <span class="muted">（在庫 {{ product.stock }}）</span>
       {% endif %}
+      <form
+        class="inline-form"
+        style="margin-top: 0.5rem"
+        action="{{ url_for('product_favorite_toggle', product_id=product.id) }}"
+        method="post"
+      >
+        {% include "_csrf.html" %}
+        <input type="hidden" name="next" value="products" />
+        {% if product.id in favorite_ids %}
+        <button type="submit" class="button-secondary">お気に入り解除</button>
+        {% else %}
+        <button type="submit">お気に入り</button>
+        {% endif %}
+      </form>
     </div>
   </li>
   {% endfor %}

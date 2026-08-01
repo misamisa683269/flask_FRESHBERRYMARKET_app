@@ -4,6 +4,9 @@
   <a href="{{ url_for('cart') }}">カート</a>
   <a href="{{ url_for('orders') }}">自分の注文</a>
   <a href="{{ url_for('contact') }}">お問い合わせ</a>
+  {% if is_logged_in %}
+  <a href="{{ url_for('favorites') }}">お気に入り</a>
+  {% endif %}
   {% if is_admin %}
   <a href="{{ url_for('product_new') }}">商品を追加</a>
   <a href="{{ url_for('admin_orders') }}">注文管理</a>

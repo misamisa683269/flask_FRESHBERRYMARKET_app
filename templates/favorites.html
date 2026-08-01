@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}お気に入り | FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<h1>お気に入り</h1>
+
+{% if products %}
+<ul class="product-list">
+  {% for product in products %}
+  <li class="product-item">
+    {% if product.image_filename %}
+    <a href="{{ url_for('product_detail', product_id=product.id) }}">
+      <img
+        class="product-image-thumb"
+        src="{{ url_for('uploaded_file', filename=product.image_filename) }}"
+        alt="{{ product.name }}"
+      />
+    </a>
+    {% endif %}
+    <div>
+      <a class="product-name" href="{{ url_for('product_detail', product_id=product.id) }}">
+        {{ product.name }}
+      </a>
+      <span class="price"> — {{ product.price }}円</span>
+      <form
+        class="inline-form"
+        style="margin-top: 0.5rem"
+        action="{{ url_for('product_favorite_toggle', product_id=product.id) }}"
+        method="post"
+      >
+        {% include "_csrf.html" %}
+        <input type="hidden" name="next" value="favorites" />
+        <button type="submit" class="button-secondary">お気に入り解除</button>
+      </form>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">お気に入りはまだありません。</p>
+<p><a href="{{ url_for('products') }}">商品一覧へ</a></p>
+{% endif %}
+{% endblock %}

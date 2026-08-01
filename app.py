@@ -187,6 +187,19 @@ def init_db():
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS favorites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE (user_id, product_id),
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            FOREIGN KEY (product_id) REFERENCES products (id)
+        )
+        """
+    )
     count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
     if count == 0:
         conn.executemany(
@@ -690,6 +703,77 @@ def print_contact_message(contact_id, name, email, message):
     print("===== End of contact =====\n")
 
 
+def is_favorite(user_id, product_id):
+    if user_id is None:
+        return False
+    conn = get_db()
+    row = conn.execute(
+        """
+        SELECT id FROM favorites
+        WHERE user_id = ? AND product_id = ?
+        """,
+        (user_id, product_id),
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+def get_favorite_product_ids(user_id):
+    if user_id is None:
+        return set()
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT product_id FROM favorites WHERE user_id = ?",
+        (user_id,),
+    ).fetchall()
+    conn.close()
+    return {row["product_id"] for row in rows}
+
+
+def add_favorite(user_id, product_id):
+    conn = get_db()
+    try:
+        conn.execute(
+            """
+            INSERT INTO favorites (user_id, product_id, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (user_id, product_id, datetime.now().isoformat(timespec="seconds")),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.rollback()
+    finally:
+        conn.close()
+
+
+def remove_favorite(user_id, product_id):
+    conn = get_db()
+    conn.execute(
+        "DELETE FROM favorites WHERE user_id = ? AND product_id = ?",
+        (user_id, product_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_favorites_for_user(user_id):
+    conn = get_db()
+    products = conn.execute(
+        """
+        SELECT products.id, products.name, products.price, products.description,
+               products.image_filename, products.stock, favorites.created_at
+        FROM favorites
+        JOIN products ON products.id = favorites.product_id
+        WHERE favorites.user_id = ?
+        ORDER BY favorites.id DESC
+        """,
+        (user_id,),
+    ).fetchall()
+    conn.close()
+    return products
+
+
 def build_cart_items():
     cart_data = session.get("cart", {})
     items = []
@@ -824,10 +908,12 @@ def products():
         product_list = search_products(query)
     else:
         product_list = get_all_products()
+    favorite_ids = get_favorite_product_ids(current_user_id())
     return render_template(
         "products.html",
         products=product_list,
         q=query,
+        favorite_ids=favorite_ids,
     )
 
 
@@ -877,6 +963,47 @@ def product_detail(product_id):
         product=product,
         reviews=get_reviews_for_product(product_id),
         my_review=my_review,
+        is_favorited=is_favorite(user_id, product_id),
+    )
+
+
+@app.route("/products/<int:product_id>/favorite", methods=["POST"])
+def product_favorite_toggle(product_id):
+    user_id = current_user_id()
+    if user_id is None:
+        flash("お気に入りにはログインが必要です。", "error")
+        return redirect(url_for("login"))
+
+    product = get_product(product_id)
+    if product is None:
+        abort(404)
+
+    if is_favorite(user_id, product_id):
+        remove_favorite(user_id, product_id)
+        flash("お気に入りから削除しました。", "success")
+    else:
+        add_favorite(user_id, product_id)
+        flash("お気に入りに追加しました。", "success")
+
+    next_url = request.form.get("next", "").strip()
+    if next_url in ("products", "favorites", "detail"):
+        if next_url == "products":
+            return redirect(url_for("products"))
+        if next_url == "favorites":
+            return redirect(url_for("favorites"))
+    return redirect(url_for("product_detail", product_id=product_id))
+
+
+@app.route("/favorites")
+def favorites():
+    user_id = current_user_id()
+    if user_id is None:
+        flash("お気に入り一覧を見るにはログインが必要です。", "error")
+        return redirect(url_for("login"))
+
+    return render_template(
+        "favorites.html",
+        products=get_favorites_for_user(user_id),
     )
 
 
