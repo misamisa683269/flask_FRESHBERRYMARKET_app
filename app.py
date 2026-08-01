@@ -556,12 +556,16 @@ def cart_add(product_id):
     if product is None:
         abort(404)
 
+    quantity = request.form.get("quantity", type=int)
+    if quantity is None or quantity < 1:
+        quantity = 1
+
     cart = session.get("cart", {})
     key = str(product_id)
-    cart[key] = cart.get(key, 0) + 1
+    cart[key] = cart.get(key, 0) + quantity
     session["cart"] = cart
 
-    flash("カートに追加しました。", "success")
+    flash(f"カートに {quantity} 個追加しました。", "success")
     return redirect(url_for("cart"))
 
 
