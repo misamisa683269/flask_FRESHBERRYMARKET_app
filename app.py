@@ -152,6 +152,21 @@ def init_db():
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            rating INTEGER NOT NULL,
+            comment TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE (product_id, user_id),
+            FOREIGN KEY (product_id) REFERENCES products (id),
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+        """
+    )
     count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
     if count == 0:
         conn.executemany(
@@ -484,6 +499,68 @@ def update_order_status(order_id, status):
     return updated
 
 
+def get_reviews_for_product(product_id):
+    conn = get_db()
+    reviews = conn.execute(
+        """
+        SELECT reviews.id, reviews.rating, reviews.comment, reviews.created_at,
+               users.username
+        FROM reviews
+        JOIN users ON users.id = reviews.user_id
+        WHERE reviews.product_id = ?
+        ORDER BY reviews.id DESC
+        """,
+        (product_id,),
+    ).fetchall()
+    conn.close()
+    return reviews
+
+
+def get_user_review(product_id, user_id):
+    conn = get_db()
+    review = conn.execute(
+        """
+        SELECT id, rating, comment, created_at
+        FROM reviews
+        WHERE product_id = ? AND user_id = ?
+        """,
+        (product_id, user_id),
+    ).fetchone()
+    conn.close()
+    return review
+
+
+def save_review(product_id, user_id, rating, comment):
+    conn = get_db()
+    existing = conn.execute(
+        """
+        SELECT id FROM reviews
+        WHERE product_id = ? AND user_id = ?
+        """,
+        (product_id, user_id),
+    ).fetchone()
+    now = datetime.now().isoformat(timespec="seconds")
+    if existing:
+        conn.execute(
+            """
+            UPDATE reviews
+            SET rating = ?, comment = ?, created_at = ?
+            WHERE id = ?
+            """,
+            (rating, comment, now, existing["id"]),
+        )
+    else:
+        conn.execute(
+            """
+            INSERT INTO reviews (product_id, user_id, rating, comment, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (product_id, user_id, rating, comment, now),
+        )
+    conn.commit()
+    conn.close()
+
+
 def build_cart_items():
     cart_data = session.get("cart", {})
     items = []
@@ -661,7 +738,38 @@ def product_detail(product_id):
     product = get_product(product_id)
     if product is None:
         abort(404)
-    return render_template("product_detail.html", product=product)
+
+    user_id = current_user_id()
+    my_review = get_user_review(product_id, user_id) if user_id else None
+    return render_template(
+        "product_detail.html",
+        product=product,
+        reviews=get_reviews_for_product(product_id),
+        my_review=my_review,
+    )
+
+
+@app.route("/products/<int:product_id>/reviews", methods=["POST"])
+def product_review(product_id):
+    user_id = current_user_id()
+    if user_id is None:
+        flash("レビュー投稿にはログインが必要です。", "error")
+        return redirect(url_for("login"))
+
+    product = get_product(product_id)
+    if product is None:
+        abort(404)
+
+    rating = request.form.get("rating", type=int)
+    comment = request.form.get("comment", "").strip()
+
+    if rating is None or rating < 1 or rating > 5 or not comment:
+        flash("評価（1〜5）とコメントを入力してください。", "error")
+        return redirect(url_for("product_detail", product_id=product_id))
+
+    save_review(product_id, user_id, rating, comment)
+    flash("レビューを保存しました。", "success")
+    return redirect(url_for("product_detail", product_id=product_id))
 
 
 @app.route("/products/<int:product_id>/edit", methods=["GET", "POST"])
