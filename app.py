@@ -1,6 +1,7 @@
-from flask import Flask, abort, render_template
+from flask import Flask, abort, redirect, render_template, session, url_for
 
 app = Flask(__name__)
+app.secret_key = "freshberrymarket-dev-secret"
 
 PRODUCTS = [
     {
@@ -47,6 +48,44 @@ def product_detail(product_id):
     if product is None:
         abort(404)
     return render_template("product_detail.html", product=product)
+
+
+@app.route("/cart/add/<int:product_id>", methods=["POST"])
+def cart_add(product_id):
+    product = get_product(product_id)
+    if product is None:
+        abort(404)
+
+    cart = session.get("cart", {})
+    key = str(product_id)
+    cart[key] = cart.get(key, 0) + 1
+    session["cart"] = cart
+
+    return redirect(url_for("cart"))
+
+
+@app.route("/cart")
+def cart():
+    cart_data = session.get("cart", {})
+    items = []
+    total = 0
+
+    for product_id, quantity in cart_data.items():
+        product = get_product(int(product_id))
+        if product is None:
+            continue
+        subtotal = product["price"] * quantity
+        total += subtotal
+        items.append(
+            {
+                "name": product["name"],
+                "price": product["price"],
+                "quantity": quantity,
+                "subtotal": subtotal,
+            }
+        )
+
+    return render_template("cart.html", items=items, total=total)
 
 
 if __name__ == "__main__":

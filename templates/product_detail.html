@@ -8,6 +8,9 @@
     <h1>{{ product.name }}</h1>
     <p>価格: {{ product.price }}円</p>
     <p>{{ product.description }}</p>
-    <p><a href="/products">商品一覧へ戻る</a></p>
+    <form action="/cart/add/{{ product.id }}" method="post">
+      <button type="submit">カートに入れる</button>
+    </form>
+    <p><a href="/products">商品一覧へ戻る</a> | <a href="/cart">カートを見る</a></p>
   </body>
 </html>
