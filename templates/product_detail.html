@@ -1,16 +1,12 @@
-<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <title>{{ product.name }} | FRESHBERRYMARKET</title>
-  </head>
-  <body>
-    <h1>{{ product.name }}</h1>
-    {% include "_nav.html" %}
-    <p>価格: {{ product.price }}円</p>
-    <p>{{ product.description }}</p>
-    <form action="/cart/add/{{ product.id }}" method="post">
-      <button type="submit">カートに入れる</button>
-    </form>
-  </body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} | FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<h1>{{ product.name }}</h1>
+<p class="price">価格: {{ product.price }}円</p>
+<p>{{ product.description }}</p>
+<form action="{{ url_for('cart_add', product_id=product.id) }}" method="post">
+  <button type="submit">カートに入れる</button>
+</form>
+{% endblock %}

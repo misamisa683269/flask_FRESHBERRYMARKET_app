@@ -1,13 +1,13 @@
-<p>
-  <a href="/">トップ</a> |
-  <a href="/products">商品一覧</a> |
-  <a href="/cart">カート</a> |
-  <a href="/orders">自分の注文</a>
+<nav class="site-nav" aria-label="メインメニュー">
+  <a href="{{ url_for('index') }}">トップ</a>
+  <a href="{{ url_for('products') }}">商品一覧</a>
+  <a href="{{ url_for('cart') }}">カート</a>
+  <a href="{{ url_for('orders') }}">自分の注文</a>
   {% if is_logged_in %}
-  | {{ current_username }}さん |
-  <a href="/logout">ログアウト</a>
+  <span class="nav-user">{{ current_username }}さん</span>
+  <a href="{{ url_for('logout') }}">ログアウト</a>
   {% else %}
-  | <a href="/login">ログイン</a> |
-  <a href="/register">新規登録</a>
+  <a href="{{ url_for('login') }}">ログイン</a>
+  <a href="{{ url_for('register') }}">新規登録</a>
   {% endif %}
-</p>
+</nav>

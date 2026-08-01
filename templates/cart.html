@@ -1,42 +1,48 @@
-<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <title>カート | FRESHBERRYMARKET</title>
-  </head>
-  <body>
-    <h1>カート</h1>
-    {% include "_nav.html" %}
+{% extends "base.html" %}
 
-    {% if items %}
-    <ul>
-      {% for item in items %}
-      <li>
-        {{ item.name }} — {{ item.price }}円
-        = {{ item.subtotal }}円
-        <form action="/cart/update/{{ item.id }}" method="post" style="display: inline">
-          <label>
-            数量:
-            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" />
-          </label>
-          <button type="submit">更新</button>
-        </form>
-        <form action="/cart/remove/{{ item.id }}" method="post" style="display: inline">
-          <button type="submit">削除</button>
-        </form>
-      </li>
-      {% endfor %}
-    </ul>
-    <p>合計: {{ total }}円</p>
-    {% if is_logged_in %}
-    <form action="/order" method="post">
-      <button type="submit">注文する</button>
+{% block title %}カート | FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<h1>カート</h1>
+
+{% if items %}
+<ul class="cart-list">
+  {% for item in items %}
+  <li>
+    <div>
+      <strong>{{ item.name }}</strong>
+      <span class="price"> — {{ item.price }}円 = {{ item.subtotal }}円</span>
+    </div>
+    <form
+      class="inline-form"
+      action="{{ url_for('cart_update', product_id=item.id) }}"
+      method="post"
+    >
+      <label>
+        数量:
+        <input type="number" name="quantity" value="{{ item.quantity }}" min="1" />
+      </label>
+      <button type="submit">更新</button>
     </form>
-    {% else %}
-    <p>注文するには <a href="/login">ログイン</a> が必要です。</p>
-    {% endif %}
-    {% else %}
-    <p>カートは空です。</p>
-    {% endif %}
-  </body>
-</html>
+    <form
+      class="inline-form"
+      action="{{ url_for('cart_remove', product_id=item.id) }}"
+      method="post"
+    >
+      <button type="submit" class="button-secondary">削除</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+<p class="total">合計: {{ total }}円</p>
+{% if is_logged_in %}
+<form action="{{ url_for('order') }}" method="post">
+  <button type="submit">注文する</button>
+</form>
+{% else %}
+<p class="muted">注文するには <a href="{{ url_for('login') }}">ログイン</a> が必要です。</p>
+{% endif %}
+{% else %}
+<p class="muted">カートは空です。</p>
+{% endif %}
+{% endblock %}

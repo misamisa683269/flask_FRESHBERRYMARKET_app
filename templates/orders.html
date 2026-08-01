@@ -1,32 +1,27 @@
-<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <title>自分の注文 | FRESHBERRYMARKET</title>
-  </head>
-  <body>
-    <h1>自分の注文</h1>
-    {% include "_nav.html" %}
+{% extends "base.html" %}
 
-    {% if orders %}
-      {% for entry in orders %}
-      <section>
-        <h2>注文番号: {{ entry.order.id }}</h2>
-        <p>日時: {{ entry.order.created_at }}</p>
-        <ul>
-          {% for item in entry.order_items %}
-          <li>
-            {{ item.name }} — {{ item.price }}円 × {{ item.quantity }}
-            = {{ item.subtotal }}円
-          </li>
-          {% endfor %}
-        </ul>
-        <p>合計: {{ entry.order.total }}円</p>
-      </section>
-      <hr />
+{% block title %}自分の注文 | FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<h1>自分の注文</h1>
+
+{% if orders %}
+  {% for entry in orders %}
+  <section class="order-card">
+    <h2>注文番号: {{ entry.order.id }}</h2>
+    <p class="muted">日時: {{ entry.order.created_at }}</p>
+    <ul class="order-items">
+      {% for item in entry.order_items %}
+      <li>
+        {{ item.name }} — {{ item.price }}円 × {{ item.quantity }}
+        = {{ item.subtotal }}円
+      </li>
       {% endfor %}
-    {% else %}
-    <p>まだ注文はありません。</p>
-    {% endif %}
-  </body>
-</html>
+    </ul>
+    <p class="total">合計: {{ entry.order.total }}円</p>
+  </section>
+  {% endfor %}
+{% else %}
+<p class="muted">まだ注文はありません。</p>
+{% endif %}
+{% endblock %}

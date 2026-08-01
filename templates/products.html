@@ -1,19 +1,17 @@
-<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <title>商品一覧 | FRESHBERRYMARKET</title>
-  </head>
-  <body>
-    <h1>商品一覧</h1>
-    {% include "_nav.html" %}
-    <ul>
-      {% for product in products %}
-      <li>
-        <a href="/products/{{ product.id }}">{{ product.name }}</a>
-        — {{ product.price }}円
-      </li>
-      {% endfor %}
-    </ul>
-  </body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}商品一覧 | FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<h1>商品一覧</h1>
+<ul class="product-list">
+  {% for product in products %}
+  <li>
+    <a class="product-name" href="{{ url_for('product_detail', product_id=product.id) }}">
+      {{ product.name }}
+    </a>
+    <span class="price"> — {{ product.price }}円</span>
+  </li>
+  {% endfor %}
+</ul>
+{% endblock %}

@@ -1,11 +1,14 @@
-<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <title>FRESHBERRYMARKET</title>
-  </head>
-  <body>
-    <h1>FRESHBERRYMARKET</h1>
-    {% include "_nav.html" %}
-  </body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <h1 class="hero-title">FRESHBERRYMARKET</h1>
+  <p class="hero-sub">Farm to Palm — 畑から、あなたの手のひらへ。</p>
+  <div class="hero-actions">
+    <a class="button" href="{{ url_for('products') }}">商品一覧を見る</a>
+    <a class="button button-light" href="{{ url_for('cart') }}">カートを見る</a>
+  </div>
+</section>
+{% endblock %}

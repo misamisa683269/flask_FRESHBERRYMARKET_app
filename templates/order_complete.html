@@ -1,23 +1,19 @@
-<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <title>注文完了 | FRESHBERRYMARKET</title>
-  </head>
-  <body>
-    <h1>注文完了</h1>
-    {% include "_nav.html" %}
-    <p>ご注文ありがとうございました。</p>
-    <p>注文番号: {{ order.id }}（{{ order.created_at }}）</p>
+{% extends "base.html" %}
 
-    <ul>
-      {% for item in items %}
-      <li>
-        {{ item.name }} — {{ item.price }}円 × {{ item.quantity }}
-        = {{ item.subtotal }}円
-      </li>
-      {% endfor %}
-    </ul>
-    <p>合計: {{ total }}円</p>
-  </body>
-</html>
+{% block title %}注文完了 | FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<h1>注文完了</h1>
+<p>ご注文ありがとうございました。</p>
+<p class="muted">注文番号: {{ order.id }}（{{ order.created_at }}）</p>
+
+<ul class="order-items">
+  {% for item in items %}
+  <li>
+    {{ item.name }} — {{ item.price }}円 × {{ item.quantity }}
+    = {{ item.subtotal }}円
+  </li>
+  {% endfor %}
+</ul>
+<p class="total">合計: {{ total }}円</p>
+{% endblock %}
