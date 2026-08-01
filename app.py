@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+from dotenv import load_dotenv
 from flask import (
     Flask,
     abort,
@@ -14,19 +15,25 @@ from flask import (
     session,
     url_for,
 )
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-
-app = Flask(__name__)
-app.secret_key = "freshberrymarket-dev-secret"
+import os
 
 BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "freshberrymarket-dev-secret")
+csrf = CSRFProtect(app)
+
 DATABASE = BASE_DIR / "products.db"
 UPLOAD_DIR = BASE_DIR / "uploads"
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 ORDER_STATUSES = ("受付", "準備中", "発送済み")
 SHIPPING_FEE = 500
 FREE_SHIPPING_THRESHOLD = 5000
+MIN_PASSWORD_LENGTH = 8
 
 SEED_PRODUCTS = [
     (
@@ -118,7 +125,7 @@ def init_db():
     ]
     if "user_id" not in order_columns:
         conn.execute("ALTER TABLE orders ADD COLUMN user_id INTEGER")
-    for column in ("recipient_name", "postal_code", "address", "phone"):
+    for column in ("recipient_name", "postal_code", "address", "phone", "email"):
         if column not in order_columns:
             conn.execute(f"ALTER TABLE orders ADD COLUMN {column} TEXT")
     if "status" not in order_columns:
@@ -343,6 +350,68 @@ def get_user_by_username(username):
     return user
 
 
+def build_order_confirmation_email(order_id, items, subtotal, shipping_fee, total, shipping):
+    lines = [
+        "FRESHBERRYMARKET をご利用いただきありがとうございます。",
+        "",
+        f"注文番号: {order_id}",
+        "",
+        "【ご注文内容】",
+    ]
+    for item in items:
+        lines.append(
+            f"- {item['name']} : {item['price']}円 × {item['quantity']} = {item['subtotal']}円"
+        )
+    lines.extend(
+        [
+            "",
+            f"小計: {subtotal}円",
+            f"送料: {'無料' if shipping_fee == 0 else f'{shipping_fee}円'}",
+            f"合計: {total}円",
+            "",
+            "【配送先】",
+            f"氏名: {shipping['recipient_name']}",
+            f"郵便番号: {shipping['postal_code']}",
+            f"住所: {shipping['address']}",
+            f"電話番号: {shipping['phone']}",
+            "",
+            "※このメールは注文確認用です。",
+        ]
+    )
+    subject = f"【FRESHBERRYMARKET】ご注文ありがとうございます（注文番号: {order_id}）"
+    return subject, "\n".join(lines)
+
+
+def send_order_confirmation_email(to_email, subject, body):
+    """開発中はコンソール出力。MAIL_SUPPRESS_SEND=true なら実送信しない。"""
+    print("\n===== Order confirmation email =====")
+    print(f"To: {to_email}")
+    print(f"Subject: {subject}")
+    print("Body:")
+    print(body)
+    print("===== End of email =====\n")
+
+    suppress = os.environ.get("MAIL_SUPPRESS_SEND", "true").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if suppress:
+        print("(MAIL_SUPPRESS_SEND=true — SMTP送信は行いません)")
+        return True
+
+    # 将来の実送信用（MAIL_SERVER 未設定なら送信せず終了）
+    mail_server = os.environ.get("MAIL_SERVER", "").strip()
+    if not mail_server:
+        print("(MAIL_SERVER 未設定のため、コンソール出力のみです)")
+        return True
+
+    # SMTP は未実装。設定があっても今はコンソールのみ。
+    print("(SMTP実送信はまだ未対応です。内容は上記のとおりです)")
+    return True
+
+
 def create_order(items, subtotal, shipping_fee, total, user_id, shipping):
     conn = get_db()
 
@@ -359,10 +428,10 @@ def create_order(items, subtotal, shipping_fee, total, user_id, shipping):
         """
         INSERT INTO orders (
             total, created_at, user_id,
-            recipient_name, postal_code, address, phone, status,
+            recipient_name, postal_code, address, phone, email, status,
             subtotal, shipping_fee
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             total,
@@ -372,6 +441,7 @@ def create_order(items, subtotal, shipping_fee, total, user_id, shipping):
             shipping["postal_code"],
             shipping["address"],
             shipping["phone"],
+            shipping["email"],
             "受付",
             subtotal,
             shipping_fee,
@@ -403,7 +473,7 @@ def get_order(order_id):
     order = conn.execute(
         """
         SELECT id, total, created_at, user_id,
-               recipient_name, postal_code, address, phone, status,
+               recipient_name, postal_code, address, phone, email, status,
                subtotal, shipping_fee
         FROM orders
         WHERE id = ?
@@ -434,7 +504,7 @@ def get_orders_for_user(user_id):
     orders = conn.execute(
         """
         SELECT id, total, created_at, user_id,
-               recipient_name, postal_code, address, phone, status,
+               recipient_name, postal_code, address, phone, email, status,
                subtotal, shipping_fee
         FROM orders
         WHERE user_id = ?
@@ -463,7 +533,7 @@ def get_all_orders():
     orders = conn.execute(
         """
         SELECT id, total, created_at, user_id,
-               recipient_name, postal_code, address, phone, status,
+               recipient_name, postal_code, address, phone, email, status,
                subtotal, shipping_fee
         FROM orders
         ORDER BY id DESC
@@ -641,6 +711,8 @@ def register():
         password = request.form.get("password", "")
         if not username or not password:
             error = "ユーザー名とパスワードを入力してください。"
+        elif len(password) < MIN_PASSWORD_LENGTH:
+            error = f"パスワードは{MIN_PASSWORD_LENGTH}文字以上にしてください。"
         else:
             user_id = create_user(username, password)
             if user_id is None:
@@ -957,6 +1029,7 @@ def order():
         "postal_code": request.form.get("postal_code", "").strip(),
         "address": request.form.get("address", "").strip(),
         "phone": request.form.get("phone", "").strip(),
+        "email": request.form.get("email", "").strip(),
     }
 
     if not all(shipping.values()):
@@ -967,13 +1040,24 @@ def order():
             shipping_fee=shipping_fee,
             total=total,
             free_shipping_threshold=FREE_SHIPPING_THRESHOLD,
-            error="氏名・郵便番号・住所・電話番号をすべて入力してください。",
+            error="氏名・郵便番号・住所・電話番号・メールアドレスをすべて入力してください。",
         )
 
     order_id = create_order(items, subtotal, shipping_fee, total, user_id, shipping)
     if order_id is None:
         flash("在庫が足りない商品があるため、注文できませんでした。", "error")
         return redirect(url_for("cart"))
+
+    try:
+        subject, body = build_order_confirmation_email(
+            order_id, items, subtotal, shipping_fee, total, shipping
+        )
+        send_order_confirmation_email(shipping["email"], subject, body)
+    except Exception:
+        flash(
+            "注文は完了しましたが、確認メールの作成に失敗しました。",
+            "error",
+        )
 
     session["last_order_id"] = order_id
     session.pop("cart", None)

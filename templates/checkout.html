@@ -33,6 +33,7 @@
 <p class="error">{{ error }}</p>
 {% endif %}
 <form action="{{ url_for('order') }}" method="post">
+  {% include "_csrf.html" %}
   <div class="form-field">
     <label>
       氏名:
@@ -55,6 +56,12 @@
     <label>
       電話番号:
       <input type="text" name="phone" required />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
+      メールアドレス（注文確認用）:
+      <input type="email" name="email" required />
     </label>
   </div>
   <button type="submit">注文を確定する</button>

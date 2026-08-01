@@ -13,7 +13,8 @@
   {{ order.recipient_name }}<br />
   〒{{ order.postal_code }}<br />
   {{ order.address }}<br />
-  TEL: {{ order.phone }}
+  TEL: {{ order.phone }}<br />
+  {% if order.email %}メール: {{ order.email }}{% endif %}
 </p>
 
 <h2>注文内容</h2>

@@ -42,6 +42,7 @@
       action="{{ url_for('admin_order_status', order_id=entry.order.id) }}"
       method="post"
     >
+      {% include "_csrf.html" %}
       <label>
         ステータス変更:
         <select name="status">
