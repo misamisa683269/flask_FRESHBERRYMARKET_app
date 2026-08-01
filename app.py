@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, abort, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
@@ -305,6 +305,7 @@ def register():
             else:
                 session["user_id"] = user_id
                 session["username"] = username
+                flash("新規登録が完了しました。", "success")
                 return redirect(url_for("index"))
     return render_template("register.html", error=error)
 
@@ -321,6 +322,7 @@ def login():
         else:
             session["user_id"] = user["id"]
             session["username"] = user["username"]
+            flash("ログインしました。", "success")
             return redirect(url_for("index"))
     return render_template("login.html", error=error)
 
@@ -329,6 +331,7 @@ def login():
 def logout():
     session.pop("user_id", None)
     session.pop("username", None)
+    flash("ログアウトしました。", "success")
     return redirect(url_for("index"))
 
 
@@ -352,6 +355,7 @@ def product_new():
             error = "商品名・価格（0以上）・説明を入力してください。"
         else:
             create_product(name, price, description)
+            flash("商品を追加しました。", "success")
             return redirect(url_for("products"))
 
     return render_template("product_new.html", error=error)
@@ -384,6 +388,7 @@ def product_edit(product_id):
             error = "商品名・価格（0以上）・説明を入力してください。"
         else:
             update_product(product_id, name, price, description)
+            flash("商品を更新しました。", "success")
             return redirect(url_for("product_detail", product_id=product_id))
 
     return render_template("product_edit.html", product=product, error=error)
@@ -404,6 +409,7 @@ def product_delete(product_id):
     cart.pop(str(product_id), None)
     session["cart"] = cart
 
+    flash("商品を削除しました。", "success")
     return redirect(url_for("products"))
 
 
@@ -418,6 +424,7 @@ def cart_add(product_id):
     cart[key] = cart.get(key, 0) + 1
     session["cart"] = cart
 
+    flash("カートに追加しました。", "success")
     return redirect(url_for("cart"))
 
 
@@ -439,8 +446,10 @@ def cart_update(product_id):
 
     if quantity is None or quantity < 1:
         cart.pop(key, None)
+        flash("カートから商品を削除しました。", "success")
     else:
         cart[key] = quantity
+        flash("数量を更新しました。", "success")
 
     session["cart"] = cart
     return redirect(url_for("cart"))
@@ -451,6 +460,7 @@ def cart_remove(product_id):
     cart = session.get("cart", {})
     cart.pop(str(product_id), None)
     session["cart"] = cart
+    flash("カートから商品を削除しました。", "success")
     return redirect(url_for("cart"))
 
 
@@ -458,10 +468,12 @@ def cart_remove(product_id):
 def order():
     user_id = current_user_id()
     if user_id is None:
+        flash("注文するにはログインが必要です。", "error")
         return redirect(url_for("login"))
 
     items, total = build_cart_items()
     if not items:
+        flash("カートが空です。", "error")
         return redirect(url_for("cart"))
 
     order_id = create_order(items, total, user_id)
@@ -469,6 +481,7 @@ def order():
     session.pop("cart", None)
     session.pop("last_order", None)
 
+    flash("注文が完了しました。", "success")
     return redirect(url_for("order_complete"))
 
 
