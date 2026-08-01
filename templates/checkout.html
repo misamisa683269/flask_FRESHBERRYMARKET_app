@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}注文手続き | FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<h1>注文手続き</h1>
+
+<h2>カート内容</h2>
+<ul class="cart-list">
+  {% for item in items %}
+  <li>
+    <strong>{{ item.name }}</strong>
+    <span class="price"> — {{ item.price }}円 × {{ item.quantity }} = {{ item.subtotal }}円</span>
+  </li>
+  {% endfor %}
+</ul>
+<p class="total">合計: {{ total }}円</p>
+
+<h2>配送先</h2>
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+<form action="{{ url_for('order') }}" method="post">
+  <div class="form-field">
+    <label>
+      氏名:
+      <input type="text" name="recipient_name" required />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
+      郵便番号:
+      <input type="text" name="postal_code" required />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
+      住所:
+      <input type="text" name="address" required />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
+      電話番号:
+      <input type="text" name="phone" required />
+    </label>
+  </div>
+  <button type="submit">注文を確定する</button>
+  <a class="button button-light" href="{{ url_for('cart') }}">カートへ戻る</a>
+</form>
+{% endblock %}

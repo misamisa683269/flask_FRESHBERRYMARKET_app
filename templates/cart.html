@@ -36,9 +36,9 @@
 </ul>
 <p class="total">合計: {{ total }}円</p>
 {% if is_logged_in %}
-<form action="{{ url_for('order') }}" method="post">
-  <button type="submit">注文する</button>
-</form>
+<p>
+  <a class="button" href="{{ url_for('checkout') }}">注文手続きへ進む</a>
+</p>
 {% else %}
 <p class="muted">注文するには <a href="{{ url_for('login') }}">ログイン</a> が必要です。</p>
 {% endif %}

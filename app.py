@@ -85,6 +85,10 @@ def init_db():
             total INTEGER NOT NULL,
             created_at TEXT NOT NULL,
             user_id INTEGER,
+            recipient_name TEXT,
+            postal_code TEXT,
+            address TEXT,
+            phone TEXT,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
         """
@@ -94,6 +98,9 @@ def init_db():
     ]
     if "user_id" not in order_columns:
         conn.execute("ALTER TABLE orders ADD COLUMN user_id INTEGER")
+    for column in ("recipient_name", "postal_code", "address", "phone"):
+        if column not in order_columns:
+            conn.execute(f"ALTER TABLE orders ADD COLUMN {column} TEXT")
 
     conn.execute(
         """
@@ -245,11 +252,25 @@ def get_user_by_username(username):
     return user
 
 
-def create_order(items, total, user_id):
+def create_order(items, total, user_id, shipping):
     conn = get_db()
     cursor = conn.execute(
-        "INSERT INTO orders (total, created_at, user_id) VALUES (?, ?, ?)",
-        (total, datetime.now().isoformat(timespec="seconds"), user_id),
+        """
+        INSERT INTO orders (
+            total, created_at, user_id,
+            recipient_name, postal_code, address, phone
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            total,
+            datetime.now().isoformat(timespec="seconds"),
+            user_id,
+            shipping["recipient_name"],
+            shipping["postal_code"],
+            shipping["address"],
+            shipping["phone"],
+        ),
     )
     order_id = cursor.lastrowid
     conn.executemany(
@@ -270,7 +291,12 @@ def create_order(items, total, user_id):
 def get_order(order_id):
     conn = get_db()
     order = conn.execute(
-        "SELECT id, total, created_at, user_id FROM orders WHERE id = ?",
+        """
+        SELECT id, total, created_at, user_id,
+               recipient_name, postal_code, address, phone
+        FROM orders
+        WHERE id = ?
+        """,
         (order_id,),
     ).fetchone()
     conn.close()
@@ -296,7 +322,8 @@ def get_orders_for_user(user_id):
     conn = get_db()
     orders = conn.execute(
         """
-        SELECT id, total, created_at, user_id
+        SELECT id, total, created_at, user_id,
+               recipient_name, postal_code, address, phone
         FROM orders
         WHERE user_id = ?
         ORDER BY id DESC
@@ -556,6 +583,20 @@ def cart_clear():
     return redirect(url_for("cart"))
 
 
+@app.route("/checkout", methods=["GET"])
+def checkout():
+    if current_user_id() is None:
+        flash("注文するにはログインが必要です。", "error")
+        return redirect(url_for("login"))
+
+    items, total = build_cart_items()
+    if not items:
+        flash("カートが空です。", "error")
+        return redirect(url_for("cart"))
+
+    return render_template("checkout.html", items=items, total=total, error=None)
+
+
 @app.route("/order", methods=["POST"])
 def order():
     user_id = current_user_id()
@@ -568,7 +609,22 @@ def order():
         flash("カートが空です。", "error")
         return redirect(url_for("cart"))
 
-    order_id = create_order(items, total, user_id)
+    shipping = {
+        "recipient_name": request.form.get("recipient_name", "").strip(),
+        "postal_code": request.form.get("postal_code", "").strip(),
+        "address": request.form.get("address", "").strip(),
+        "phone": request.form.get("phone", "").strip(),
+    }
+
+    if not all(shipping.values()):
+        return render_template(
+            "checkout.html",
+            items=items,
+            total=total,
+            error="氏名・郵便番号・住所・電話番号をすべて入力してください。",
+        )
+
+    order_id = create_order(items, total, user_id, shipping)
     session["last_order_id"] = order_id
     session.pop("cart", None)
     session.pop("last_order", None)

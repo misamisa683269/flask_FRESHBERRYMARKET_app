@@ -7,6 +7,15 @@
 <p>ご注文ありがとうございました。</p>
 <p class="muted">注文番号: {{ order.id }}（{{ order.created_at }}）</p>
 
+<h2>配送先</h2>
+<p>
+  {{ order.recipient_name }}<br />
+  〒{{ order.postal_code }}<br />
+  {{ order.address }}<br />
+  TEL: {{ order.phone }}
+</p>
+
+<h2>注文内容</h2>
 <ul class="order-items">
   {% for item in items %}
   <li>
