@@ -3,9 +3,11 @@
   <a href="{{ url_for('products') }}">商品一覧</a>
   <a href="{{ url_for('cart') }}">カート</a>
   <a href="{{ url_for('orders') }}">自分の注文</a>
+  <a href="{{ url_for('contact') }}">お問い合わせ</a>
   {% if is_admin %}
   <a href="{{ url_for('product_new') }}">商品を追加</a>
   <a href="{{ url_for('admin_orders') }}">注文管理</a>
+  <a href="{{ url_for('admin_contacts') }}">お問い合わせ管理</a>
   {% endif %}
   {% if is_logged_in %}
   <span class="nav-user">{{ current_username }}さん</span>

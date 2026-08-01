@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}お問い合わせ | FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<h1>お問い合わせ</h1>
+<p class="muted">ご質問・ご要望などお気軽にお送りください。</p>
+
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+
+<form method="post">
+  {% include "_csrf.html" %}
+  <div class="form-field">
+    <label>
+      氏名:
+      <input type="text" name="name" value="{{ form.name }}" required />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
+      メールアドレス:
+      <input type="email" name="email" value="{{ form.email }}" required />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
+      お問い合わせ内容:
+      <textarea name="message" rows="6" required>{{ form.message }}</textarea>
+    </label>
+  </div>
+  <button type="submit">送信する</button>
+</form>
+{% endblock %}

@@ -174,6 +174,19 @@ def init_db():
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS contacts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            user_id INTEGER,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+        """
+    )
     count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
     if count == 0:
         conn.executemany(
@@ -629,6 +642,52 @@ def save_review(product_id, user_id, rating, comment):
         )
     conn.commit()
     conn.close()
+
+
+def save_contact(name, email, message, user_id=None):
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        INSERT INTO contacts (name, email, message, created_at, user_id)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            name,
+            email,
+            message,
+            datetime.now().isoformat(timespec="seconds"),
+            user_id,
+        ),
+    )
+    conn.commit()
+    contact_id = cursor.lastrowid
+    conn.close()
+    return contact_id
+
+
+def get_all_contacts():
+    conn = get_db()
+    contacts = conn.execute(
+        """
+        SELECT contacts.id, contacts.name, contacts.email, contacts.message,
+               contacts.created_at, contacts.user_id, users.username
+        FROM contacts
+        LEFT JOIN users ON users.id = contacts.user_id
+        ORDER BY contacts.id DESC
+        """
+    ).fetchall()
+    conn.close()
+    return contacts
+
+
+def print_contact_message(contact_id, name, email, message):
+    print("\n===== Contact form message =====")
+    print(f"ID: {contact_id}")
+    print(f"Name: {name}")
+    print(f"Email: {email}")
+    print("Message:")
+    print(message)
+    print("===== End of contact =====\n")
 
 
 def build_cart_items():
@@ -1098,6 +1157,51 @@ def orders():
     return render_template(
         "orders.html",
         orders=get_orders_for_user(user_id),
+    )
+
+
+@app.route("/contact", methods=["GET", "POST"])
+def contact():
+    form = {
+        "name": "",
+        "email": "",
+        "message": "",
+    }
+    if current_user_id() is not None:
+        form["name"] = session.get("username") or ""
+
+    error = None
+    if request.method == "POST":
+        form["name"] = request.form.get("name", "").strip()
+        form["email"] = request.form.get("email", "").strip()
+        form["message"] = request.form.get("message", "").strip()
+        if not form["name"] or not form["email"] or not form["message"]:
+            error = "氏名・メールアドレス・お問い合わせ内容をすべて入力してください。"
+        else:
+            contact_id = save_contact(
+                form["name"],
+                form["email"],
+                form["message"],
+                user_id=current_user_id(),
+            )
+            print_contact_message(
+                contact_id, form["name"], form["email"], form["message"]
+            )
+            flash("お問い合わせを受け付けました。ありがとうございました。", "success")
+            return redirect(url_for("contact"))
+
+    return render_template("contact.html", form=form, error=error)
+
+
+@app.route("/admin/contacts")
+def admin_contacts():
+    blocked = require_admin()
+    if blocked is not None:
+        return blocked
+
+    return render_template(
+        "admin_contacts.html",
+        contacts=get_all_contacts(),
     )
 
 

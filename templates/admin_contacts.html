@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}お問い合わせ一覧 | FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<h1>お問い合わせ一覧（管理者）</h1>
+
+{% if not contacts %}
+<p class="muted">まだお問い合わせはありません。</p>
+{% else %}
+{% for item in contacts %}
+<section class="order-card">
+  <p class="muted">
+    #{{ item.id }} — {{ item.created_at }}
+    {% if item.username %}（ユーザー: {{ item.username }}）{% endif %}
+  </p>
+  <p>
+    <strong>{{ item.name }}</strong>
+    &lt;{{ item.email }}&gt;
+  </p>
+  <p style="white-space: pre-wrap">{{ item.message }}</p>
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}
