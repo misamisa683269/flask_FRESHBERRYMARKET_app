@@ -81,10 +81,17 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user'
         )
         """
     )
+    user_columns = [
+        row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()
+    ]
+    if "role" not in user_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN role TEXT")
+        conn.execute("UPDATE users SET role = 'user' WHERE role IS NULL")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS orders (
@@ -131,6 +138,19 @@ def init_db():
             """,
             SEED_PRODUCTS,
         )
+
+    admin_count = conn.execute(
+        "SELECT COUNT(*) FROM users WHERE role = 'admin'"
+    ).fetchone()[0]
+    if admin_count == 0:
+        conn.execute(
+            """
+            INSERT INTO users (username, password_hash, role)
+            VALUES (?, ?, ?)
+            """,
+            ("admin", generate_password_hash("admin123"), "admin"),
+        )
+
     conn.commit()
     conn.close()
 
@@ -252,12 +272,15 @@ def delete_product(product_id):
         remove_product_image_file(product["image_filename"])
 
 
-def create_user(username, password):
+def create_user(username, password, role="user"):
     conn = get_db()
     try:
         cursor = conn.execute(
-            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-            (username, generate_password_hash(password)),
+            """
+            INSERT INTO users (username, password_hash, role)
+            VALUES (?, ?, ?)
+            """,
+            (username, generate_password_hash(password), role),
         )
         conn.commit()
         user_id = cursor.lastrowid
@@ -271,7 +294,11 @@ def create_user(username, password):
 def get_user_by_username(username):
     conn = get_db()
     user = conn.execute(
-        "SELECT id, username, password_hash FROM users WHERE username = ?",
+        """
+        SELECT id, username, password_hash, role
+        FROM users
+        WHERE username = ?
+        """,
         (username,),
     ).fetchone()
     conn.close()
@@ -416,11 +443,26 @@ def current_user_id():
     return session.get("user_id")
 
 
+def is_admin():
+    return session.get("role") == "admin"
+
+
+def require_admin():
+    if current_user_id() is None:
+        flash("ログインが必要です。", "error")
+        return redirect(url_for("login"))
+    if not is_admin():
+        flash("管理者のみ操作できます。", "error")
+        return redirect(url_for("products"))
+    return None
+
+
 @app.context_processor
 def inject_auth():
     return {
         "current_username": session.get("username"),
         "is_logged_in": current_user_id() is not None,
+        "is_admin": is_admin(),
     }
 
 
@@ -444,6 +486,7 @@ def register():
             else:
                 session["user_id"] = user_id
                 session["username"] = username
+                session["role"] = "user"
                 flash("新規登録が完了しました。", "success")
                 return redirect(url_for("index"))
     return render_template("register.html", error=error)
@@ -461,6 +504,7 @@ def login():
         else:
             session["user_id"] = user["id"]
             session["username"] = user["username"]
+            session["role"] = user["role"] if user["role"] else "user"
             flash("ログインしました。", "success")
             return redirect(url_for("index"))
     return render_template("login.html", error=error)
@@ -470,6 +514,7 @@ def login():
 def logout():
     session.pop("user_id", None)
     session.pop("username", None)
+    session.pop("role", None)
     flash("ログアウトしました。", "success")
     return redirect(url_for("index"))
 
@@ -495,8 +540,9 @@ def products():
 
 @app.route("/products/new", methods=["GET", "POST"])
 def product_new():
-    if current_user_id() is None:
-        return redirect(url_for("login"))
+    blocked = require_admin()
+    if blocked is not None:
+        return blocked
 
     error = None
     if request.method == "POST":
@@ -535,8 +581,9 @@ def product_detail(product_id):
 
 @app.route("/products/<int:product_id>/edit", methods=["GET", "POST"])
 def product_edit(product_id):
-    if current_user_id() is None:
-        return redirect(url_for("login"))
+    blocked = require_admin()
+    if blocked is not None:
+        return blocked
 
     product = get_product(product_id)
     if product is None:
@@ -577,8 +624,9 @@ def product_edit(product_id):
 
 @app.route("/products/<int:product_id>/delete", methods=["POST"])
 def product_delete(product_id):
-    if current_user_id() is None:
-        return redirect(url_for("login"))
+    blocked = require_admin()
+    if blocked is not None:
+        return blocked
 
     product = get_product(product_id)
     if product is None:

@@ -1,0 +1,97 @@
+# FRESHBERRYMARKET（Farm to Palm）
+
+ブルーベリー関連商品の簡易 EC アプリです。  
+Flask + SQLite で動く、学習用の最小構成です。
+
+## 必要なもの
+
+- Python 3
+- ターミナル（macOS なら Terminal / Cursor のターミナル）
+
+## セットアップと起動
+
+プロジェクトフォルダへ移動します。
+
+```bash
+cd ~/camp/python/blueberry_app/flask_FRESHBERRYMARKET_app
+```
+
+仮想環境を作り、有効化します。
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+依存パッケージを入れます。
+
+```bash
+pip install -r requirements.txt
+```
+
+アプリを起動します。
+
+```bash
+python app.py
+```
+
+ブラウザで次を開きます。
+
+- http://127.0.0.1:8000/
+
+終了するときは、ターミナルで `Ctrl + C` です。
+
+## 初期管理者アカウント
+
+アプリ起動時に管理者がいない場合、次のアカウントが自動作成されます。
+
+- ユーザー名: `admin`
+- パスワード: `admin123`
+
+一般ユーザーは `/register` から登録できます（購入・カート・注文のみ）。  
+商品の追加・編集・削除は管理者のみ可能です。
+
+## 主な URL
+
+| URL | 内容 |
+|-----|------|
+| `/` | トップページ |
+| `/products` | 商品一覧（`?q=` で検索可） |
+| `/products/<id>` | 商品詳細 |
+| `/cart` | カート |
+| `/checkout` | 注文手続き（配送先入力） |
+| `/orders` | 自分の注文一覧（ログイン必要） |
+| `/login` | ログイン |
+| `/register` | 新規登録 |
+| `/products/new` | 商品追加（ログイン必要） |
+
+## 主な機能
+
+- 商品一覧・詳細・検索
+- 商品の追加・編集・削除（管理者のみ）
+- 商品画像のアップロード（管理者のみ）
+- 在庫管理（カート追加・注文時に在庫チェック）
+- カート（数量変更・削除・空にする）
+- 注文（配送先の保存）
+- ユーザー登録・ログイン・ログアウト（一般 / 管理者）
+- 操作結果のフラッシュメッセージ
+
+## プロジェクト構成（抜粋）
+
+```text
+flask_FRESHBERRYMARKET_app/
+├── app.py              # Flask アプリ本体
+├── requirements.txt    # 依存パッケージ
+├── .gitignore
+├── README.md
+├── templates/          # HTML（base.html など）
+├── static/             # CSS
+├── uploads/            # アップロード画像（Git 管理外）
+└── products.db         # SQLite（起動時に自動作成・Git 管理外）
+```
+
+## 補足
+
+- 初回起動時に DB と初期商品が作られます
+- `.venv` / `*.db` / `uploads/` は `.gitignore` 対象です
+- 開発用の簡易アプリです（本番向けの決済やデプロイ設定は含みません）
