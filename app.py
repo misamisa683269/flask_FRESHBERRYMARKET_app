@@ -464,6 +464,13 @@ def cart_remove(product_id):
     return redirect(url_for("cart"))
 
 
+@app.route("/cart/clear", methods=["POST"])
+def cart_clear():
+    session.pop("cart", None)
+    flash("カートを空にしました。", "success")
+    return redirect(url_for("cart"))
+
+
 @app.route("/order", methods=["POST"])
 def order():
     user_id = current_user_id()
