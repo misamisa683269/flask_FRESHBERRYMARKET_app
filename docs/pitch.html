@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FRESHBERRYMARKET 発表 | 丹野美紗</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --berry: #245a8c;
+      --berry-deep: #143a5c;
+      --leaf: #2f6a48;
+      --leaf-soft: #e6f3eb;
+      --paper: #eef4f8;
+      --ink: #152530;
+      --muted: #5a6d7c;
+      --line: #c5d4e2;
+      --white: #ffffff;
+      --shadow: 0 14px 40px rgba(20, 58, 92, 0.1);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: "Source Sans 3", "Hiragino Sans", "Yu Gothic", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 0% 0%, rgba(70, 130, 180, 0.22), transparent 55%),
+        radial-gradient(ellipse 70% 45% at 100% 100%, rgba(70, 140, 100, 0.16), transparent 50%),
+        var(--paper);
+    }
+
+    .deck { height: 100%; display: flex; flex-direction: column; }
+    .slides { flex: 1; position: relative; overflow: hidden; }
+
+    .slide {
+      display: none;
+      position: absolute;
+      inset: 0;
+      padding: clamp(1.5rem, 4vw, 3rem);
+      overflow: auto;
+    }
+
+    .slide.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fade-in 0.28s ease;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .slide-inner {
+      width: min(960px, 100%);
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: clamp(2rem, 4vw, 3rem) clamp(1.75rem, 4vw, 3.25rem);
+    }
+
+    .slide.center .slide-inner { text-align: center; }
+
+    .time-badge {
+      display: inline-block;
+      margin: 0 0 1rem;
+      padding: 0.25rem 0.8rem;
+      border-radius: 999px;
+      background: var(--leaf-soft);
+      color: var(--leaf);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0 0 0.6rem;
+      font-family: "Fraunces", Georgia, serif;
+      font-size: clamp(2.2rem, 5vw, 3.2rem);
+      color: var(--berry-deep);
+      line-height: 1.12;
+    }
+
+    h2 {
+      margin: 0 0 1.35rem;
+      font-family: "Fraunces", Georgia, serif;
+      font-size: clamp(1.55rem, 3.2vw, 2.1rem);
+      color: var(--berry-deep);
+      line-height: 1.2;
+    }
+
+    .tagline {
+      margin: 0 0 1.5rem;
+      color: var(--leaf);
+      font-size: clamp(1.05rem, 2vw, 1.2rem);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .lead {
+      margin: 0 0 1.5rem;
+      font-size: clamp(1.1rem, 2.2vw, 1.35rem);
+      line-height: 1.55;
+      color: var(--ink);
+    }
+
+    .sub {
+      margin: 1.25rem 0 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    ul.points, ol.points {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    ul.points li, ol.points li {
+      position: relative;
+      margin: 0 0 0.9rem;
+      padding-left: 1.35rem;
+      font-size: clamp(1.12rem, 2.1vw, 1.35rem);
+      line-height: 1.45;
+      font-weight: 600;
+    }
+
+    ul.points li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.55em;
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: var(--berry);
+    }
+
+    ol.points { counter-reset: step; }
+    ol.points li { padding-left: 2rem; }
+    ol.points li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0.05em;
+      width: 1.45rem;
+      height: 1.45rem;
+      border-radius: 50%;
+      background: var(--berry);
+      color: #fff;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem 2rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .card {
+      background: #f7fafc;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1.1rem 1.2rem;
+    }
+
+    .card h3 {
+      margin: 0 0 0.65rem;
+      font-size: 1.05rem;
+      color: var(--berry-deep);
+    }
+
+    .card p, .card li {
+      margin: 0.35rem 0;
+      font-size: 1.02rem;
+      font-weight: 500;
+      line-height: 1.4;
+      color: var(--ink);
+    }
+
+    .card ul {
+      margin: 0;
+      padding-left: 1.1rem;
+    }
+
+    .shot { margin: 0; }
+    .shot img {
+      display: block;
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      object-position: top;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+    .shot figcaption {
+      margin-top: 0.45rem;
+      text-align: center;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--berry-deep);
+    }
+
+    a { color: var(--berry); font-weight: 600; }
+
+    .agenda {
+      display: grid;
+      gap: 0.55rem;
+      text-align: left;
+      max-width: 28rem;
+      margin: 0 auto;
+    }
+
+    .agenda div {
+      display: flex;
+      gap: 0.85rem;
+      align-items: baseline;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .agenda span {
+      min-width: 2.8rem;
+      color: var(--leaf);
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 1.25rem 1rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .controls button {
+      font: inherit;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      padding: 0.55rem 1.1rem;
+      cursor: pointer;
+      background: var(--berry);
+      color: #fff;
+    }
+
+    .controls button:hover { background: var(--berry-deep); }
+    .controls button:disabled { opacity: 0.4; cursor: default; }
+    .hint { text-align: center; flex: 1; }
+
+    @media (max-width: 800px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .shot img { height: 140px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .slide.active { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <div class="slides" id="slides">
+
+      <section class="slide center active">
+        <div class="slide-inner">
+          <p class="time-badge">約10分</p>
+          <h1>FRESHBERRYMARKET</h1>
+          <p class="tagline">Farm to Palm</p>
+          <p class="lead">ブルーベリー直売の簡易 EC<br />丹野美紗 ｜ Flask + SQLite</p>
+          <div class="agenda">
+            <div><span>1分</span>自己紹介・理由</div>
+            <div><span>2分</span>ターゲット・課題</div>
+            <div><span>1分</span>概要・違い・マネタイズ</div>
+            <div><span>3分</span>画面・デモ</div>
+            <div><span>2分</span>工夫・苦労</div>
+            <div><span>1分</span>今後・まとめ</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="time-badge">1分</p>
+          <h2>1. 基本情報</h2>
+          <ul class="points">
+            <li>作成者：丹野美紗</li>
+            <li>技術：Python / Flask / SQLite / HTML / CSS</li>
+            <li>開発：http://127.0.0.1:8000/（未デプロイ）</li>
+            <li>GitHub：misamisa683269/flask_FRESHBERRYMARKET_app</li>
+          </ul>
+          <p class="sub">作った理由：「畑から手のひらへ」を小さな Web ショップとして自分で実装したかった</p>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="time-badge">2分</p>
+          <h2>2. 誰のためのアプリか</h2>
+          <div class="grid-2">
+            <div class="card">
+              <h3>想定ユーザー</h3>
+              <ul>
+                <li>小規模農園・直売の生産者</li>
+                <li>新鮮なブルーベリーを買いたい人</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>困りごと</h3>
+              <ul>
+                <li>電話・LINEだと在庫が追いづらい</li>
+                <li>紙・Excelだと履歴がばらばら</li>
+              </ul>
+            </div>
+          </div>
+          <p class="sub">解決したいこと：注文・在庫・進捗を Web で見えるようにする</p>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="time-badge">3</p>
+          <h2>3. アプリの概要</h2>
+          <p class="lead">商品を探してカートに入れ、配送先を登録して注文できる簡易 EC。管理者は商品・在庫・注文も扱えます。</p>
+          <ul class="points">
+            <li>商品・カート・注文・送料</li>
+            <li>レビュー・お気に入り・問い合わせ</li>
+            <li>管理者機能・キャンセル／返品</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="time-badge">4</p>
+          <h2>4. 既存の方法との違い</h2>
+          <div class="grid-2">
+            <div class="card">
+              <h3>これまで</h3>
+              <ul>
+                <li>電話・LINE・紙・Excel</li>
+                <li>手計算の送料</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>このアプリ</h3>
+              <ul>
+                <li>Webで一覧〜注文まで一連</li>
+                <li>在庫チェック・ステータス管理</li>
+              </ul>
+            </div>
+          </div>
+          <p class="sub">強み：最小構成で操作が簡単　／　限界：決済・本番運用はこれから</p>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="time-badge">5・1分</p>
+          <h2>5. マネタイズ（案）</h2>
+          <ul class="points">
+            <li>払うのは主に生産者・直売運営</li>
+            <li>消費者は基本無料</li>
+            <li>収益案：月額 / 手数料 / 導入支援</li>
+          </ul>
+          <p class="sub">無料＝閲覧・注文　｜　有料候補＝実メール・決済・複数店舗</p>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="time-badge">6・3分</p>
+          <h2>6. 画面紹介</h2>
+          <div class="grid-3">
+            <figure class="shot">
+              <img src="screenshots/01_top.png" alt="トップ" />
+              <figcaption>トップ</figcaption>
+            </figure>
+            <figure class="shot">
+              <img src="screenshots/02_products.png" alt="一覧" />
+              <figcaption>一覧</figcaption>
+            </figure>
+            <figure class="shot">
+              <img src="screenshots/03_detail.png" alt="詳細" />
+              <figcaption>詳細</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="time-badge">7・デモ</p>
+          <h2>7. デモの流れ</h2>
+          <div class="grid-2">
+            <div class="card">
+              <h3>買う人</h3>
+              <ol class="points">
+                <li>ログイン</li>
+                <li>検索 → 詳細</li>
+                <li>カート → 注文</li>
+              </ol>
+            </div>
+            <div class="card">
+              <h3>管理者</h3>
+              <ol class="points">
+                <li>ログイン</li>
+                <li>商品 or ステータス</li>
+                <li>問い合わせ確認</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="time-badge">8・2分</p>
+          <h2>8. 工夫したところ</h2>
+          <ul class="points">
+            <li>注文と明細テーブルを分離</li>
+            <li>在庫の減算と戻し（二重防止）</li>
+            <li>CSRF・パスワードハッシュ・権限分け</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="time-badge">9</p>
+          <h2>9. 苦労したところ</h2>
+          <ul class="points">
+            <li>カートと注文データのつなぎ</li>
+            <li>CSRF 後の全フォーム対応</li>
+            <li>在庫戻し・ボタン見た目の不具合</li>
+          </ul>
+          <p class="sub">学び：現象 → 原因の場所 → 再現、の順で切り分ける</p>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="time-badge">10・1分</p>
+          <h2>10. 今後 ／ まとめ</h2>
+          <ul class="points">
+            <li>次：デプロイ・実メール・決済</li>
+            <li>解決したいこと：小さな直売の注文・在庫を見える化</li>
+            <li>学び：EC を一気通貫で自作する経験</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="slide center">
+        <div class="slide-inner">
+          <h1>Thank you</h1>
+          <p class="tagline">Farm to Palm</p>
+          <p class="lead">丹野美紗</p>
+          <p class="sub">
+            <a href="https://github.com/misamisa683269/flask_FRESHBERRYMARKET_app" target="_blank" rel="noopener">GitHub</a>
+            ｜ Q&amp;A 歓迎
+          </p>
+        </div>
+      </section>
+
+    </div>
+
+    <div class="controls">
+      <button type="button" id="prev">← 前へ</button>
+      <div class="hint"><span id="counter">1 / 12</span> · ←→ / スペース</div>
+      <button type="button" id="next">次へ →</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const slides = Array.from(document.querySelectorAll(".slide"));
+      const counter = document.getElementById("counter");
+      const prevBtn = document.getElementById("prev");
+      const nextBtn = document.getElementById("next");
+      let i = 0;
+
+      function show(n) {
+        i = Math.max(0, Math.min(slides.length - 1, n));
+        slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
+        counter.textContent = (i + 1) + " / " + slides.length;
+        prevBtn.disabled = i === 0;
+        nextBtn.disabled = i === slides.length - 1;
+      }
+
+      prevBtn.addEventListener("click", (e) => { e.stopPropagation(); show(i - 1); });
+      nextBtn.addEventListener("click", (e) => { e.stopPropagation(); show(i + 1); });
+
+      document.addEventListener("keydown", (e) => {
+        if (["ArrowRight", " ", "PageDown"].includes(e.key)) { e.preventDefault(); show(i + 1); }
+        else if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); show(i - 1); }
+        else if (e.key === "Home") { e.preventDefault(); show(0); }
+        else if (e.key === "End") { e.preventDefault(); show(slides.length - 1); }
+      });
+
+      document.getElementById("slides").addEventListener("click", (e) => {
+        if (e.target.closest("a, button")) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        if (e.clientX - rect.left < rect.width * 0.35) show(i - 1);
+        else show(i + 1);
+      });
+
+      show(0);
+    })();
+  </script>
+</body>
+</html>
