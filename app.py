@@ -138,6 +138,22 @@ def get_all_products():
     return products
 
 
+def search_products(keyword):
+    conn = get_db()
+    like = f"%{keyword}%"
+    products = conn.execute(
+        """
+        SELECT id, name, price, description, image_filename
+        FROM products
+        WHERE name LIKE ? OR description LIKE ?
+        ORDER BY id
+        """,
+        (like, like),
+    ).fetchall()
+    conn.close()
+    return products
+
+
 def get_product(product_id):
     conn = get_db()
     product = conn.execute(
@@ -439,7 +455,16 @@ def uploaded_file(filename):
 
 @app.route("/products")
 def products():
-    return render_template("products.html", products=get_all_products())
+    query = request.args.get("q", "").strip()
+    if query:
+        product_list = search_products(query)
+    else:
+        product_list = get_all_products()
+    return render_template(
+        "products.html",
+        products=product_list,
+        q=query,
+    )
 
 
 @app.route("/products/new", methods=["GET", "POST"])

@@ -229,6 +229,20 @@ label {
   margin-bottom: 1rem;
 }
 
+.search-form {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.search-form .form-field {
+  margin-bottom: 0.75rem;
+}
+
+.search-form input[type="search"] {
+  width: min(100%, 320px);
+}
+
 input[type="text"],
 input[type="password"],
 input[type="number"] {

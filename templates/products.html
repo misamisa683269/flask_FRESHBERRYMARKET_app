@@ -4,6 +4,25 @@
 
 {% block content %}
 <h1>商品一覧</h1>
+
+<form class="search-form" action="{{ url_for('products') }}" method="get">
+  <div class="form-field">
+    <label>
+      キーワード検索:
+      <input type="search" name="q" value="{{ q }}" placeholder="商品名や説明で検索" />
+    </label>
+  </div>
+  <button type="submit">検索</button>
+  {% if q %}
+  <a class="button button-light" href="{{ url_for('products') }}">すべて表示</a>
+  {% endif %}
+</form>
+
+{% if q %}
+<p class="muted">「{{ q }}」の検索結果: {{ products|length }}件</p>
+{% endif %}
+
+{% if products %}
 <ul class="product-list">
   {% for product in products %}
   <li class="product-item">
@@ -25,4 +44,7 @@
   </li>
   {% endfor %}
 </ul>
+{% else %}
+<p class="muted">該当する商品がありません。</p>
+{% endif %}
 {% endblock %}
