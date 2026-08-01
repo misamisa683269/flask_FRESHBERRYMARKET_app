@@ -30,7 +30,8 @@ csrf = CSRFProtect(app)
 DATABASE = BASE_DIR / "products.db"
 UPLOAD_DIR = BASE_DIR / "uploads"
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
-ORDER_STATUSES = ("受付", "準備中", "発送済み")
+ORDER_STATUSES = ("受付", "準備中", "発送済み", "キャンセル", "返品受付", "返品完了")
+STOCK_RESTORE_STATUSES = frozenset({"キャンセル", "返品完了"})
 SHIPPING_FEE = 500
 FREE_SHIPPING_THRESHOLD = 5000
 MIN_PASSWORD_LENGTH = 8
@@ -145,6 +146,11 @@ def init_db():
             WHERE subtotal IS NULL
             """
         )
+    if "stock_restored" not in order_columns:
+        conn.execute("ALTER TABLE orders ADD COLUMN stock_restored INTEGER")
+        conn.execute(
+            "UPDATE orders SET stock_restored = 0 WHERE stock_restored IS NULL"
+        )
 
     conn.execute(
         """
@@ -155,10 +161,16 @@ def init_db():
             price INTEGER NOT NULL,
             quantity INTEGER NOT NULL,
             subtotal INTEGER NOT NULL,
+            product_id INTEGER,
             FOREIGN KEY (order_id) REFERENCES orders (id)
         )
         """
     )
+    order_item_columns = [
+        row[1] for row in conn.execute("PRAGMA table_info(order_items)").fetchall()
+    ]
+    if "product_id" not in order_item_columns:
+        conn.execute("ALTER TABLE order_items ADD COLUMN product_id INTEGER")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS reviews (
@@ -455,9 +467,9 @@ def create_order(items, subtotal, shipping_fee, total, user_id, shipping):
         INSERT INTO orders (
             total, created_at, user_id,
             recipient_name, postal_code, address, phone, email, status,
-            subtotal, shipping_fee
+            subtotal, shipping_fee, stock_restored
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             total,
@@ -471,16 +483,24 @@ def create_order(items, subtotal, shipping_fee, total, user_id, shipping):
             "受付",
             subtotal,
             shipping_fee,
+            0,
         ),
     )
     order_id = cursor.lastrowid
     conn.executemany(
         """
-        INSERT INTO order_items (order_id, name, price, quantity, subtotal)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO order_items (order_id, name, price, quantity, subtotal, product_id)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         [
-            (order_id, item["name"], item["price"], item["quantity"], item["subtotal"])
+            (
+                order_id,
+                item["name"],
+                item["price"],
+                item["quantity"],
+                item["subtotal"],
+                item["id"],
+            )
             for item in items
         ],
     )
@@ -494,13 +514,56 @@ def create_order(items, subtotal, shipping_fee, total, user_id, shipping):
     return order_id
 
 
+def restore_order_stock(conn, order_id):
+    """在庫を戻す。成功したら True。すでに戻済みなら False。"""
+    order = conn.execute(
+        "SELECT stock_restored FROM orders WHERE id = ?",
+        (order_id,),
+    ).fetchone()
+    if order is None:
+        return False
+    if order["stock_restored"]:
+        return False
+
+    items = conn.execute(
+        """
+        SELECT name, quantity, product_id
+        FROM order_items
+        WHERE order_id = ?
+        """,
+        (order_id,),
+    ).fetchall()
+    for item in items:
+        if item["product_id"] is not None:
+            conn.execute(
+                "UPDATE products SET stock = stock + ? WHERE id = ?",
+                (item["quantity"], item["product_id"]),
+            )
+        else:
+            conn.execute(
+                """
+                UPDATE products
+                SET stock = stock + ?
+                WHERE id = (
+                    SELECT id FROM products WHERE name = ? ORDER BY id LIMIT 1
+                )
+                """,
+                (item["quantity"], item["name"]),
+            )
+    conn.execute(
+        "UPDATE orders SET stock_restored = 1 WHERE id = ?",
+        (order_id,),
+    )
+    return True
+
+
 def get_order(order_id):
     conn = get_db()
     order = conn.execute(
         """
         SELECT id, total, created_at, user_id,
                recipient_name, postal_code, address, phone, email, status,
-               subtotal, shipping_fee
+               subtotal, shipping_fee, stock_restored
         FROM orders
         WHERE id = ?
         """,
@@ -514,7 +577,7 @@ def get_order_items(order_id):
     conn = get_db()
     items = conn.execute(
         """
-        SELECT name, price, quantity, subtotal
+        SELECT name, price, quantity, subtotal, product_id
         FROM order_items
         WHERE order_id = ?
         ORDER BY id
@@ -531,7 +594,7 @@ def get_orders_for_user(user_id):
         """
         SELECT id, total, created_at, user_id,
                recipient_name, postal_code, address, phone, email, status,
-               subtotal, shipping_fee
+               subtotal, shipping_fee, stock_restored
         FROM orders
         WHERE user_id = ?
         ORDER BY id DESC
@@ -542,7 +605,7 @@ def get_orders_for_user(user_id):
     for order in orders:
         items = conn.execute(
             """
-            SELECT name, price, quantity, subtotal
+            SELECT name, price, quantity, subtotal, product_id
             FROM order_items
             WHERE order_id = ?
             ORDER BY id
@@ -560,7 +623,7 @@ def get_all_orders():
         """
         SELECT id, total, created_at, user_id,
                recipient_name, postal_code, address, phone, email, status,
-               subtotal, shipping_fee
+               subtotal, shipping_fee, stock_restored
         FROM orders
         ORDER BY id DESC
         """
@@ -569,7 +632,7 @@ def get_all_orders():
     for order in orders:
         items = conn.execute(
             """
-            SELECT name, price, quantity, subtotal
+            SELECT name, price, quantity, subtotal, product_id
             FROM order_items
             WHERE order_id = ?
             ORDER BY id
@@ -585,14 +648,54 @@ def update_order_status(order_id, status):
     if status not in ORDER_STATUSES:
         return False
     conn = get_db()
-    cursor = conn.execute(
+    order = conn.execute(
+        "SELECT id, status FROM orders WHERE id = ?",
+        (order_id,),
+    ).fetchone()
+    if order is None:
+        conn.close()
+        return False
+
+    conn.execute(
         "UPDATE orders SET status = ? WHERE id = ?",
         (status, order_id),
     )
+    if status in STOCK_RESTORE_STATUSES:
+        restore_order_stock(conn, order_id)
     conn.commit()
-    updated = cursor.rowcount > 0
     conn.close()
-    return updated
+    return True
+
+
+def cancel_order_by_user(order_id, user_id):
+    """受付の自分の注文のみキャンセル。成功メッセージ用に True/エラー理由。"""
+    conn = get_db()
+    order = conn.execute(
+        """
+        SELECT id, user_id, status
+        FROM orders
+        WHERE id = ?
+        """,
+        (order_id,),
+    ).fetchone()
+    if order is None:
+        conn.close()
+        return False, "注文が見つかりません。"
+    if order["user_id"] != user_id:
+        conn.close()
+        return False, "この注文はキャンセルできません。"
+    if (order["status"] or "受付") != "受付":
+        conn.close()
+        return False, "「受付」の注文のみキャンセルできます（準備中・発送済みは不可）。"
+
+    conn.execute(
+        "UPDATE orders SET status = ? WHERE id = ?",
+        ("キャンセル", order_id),
+    )
+    restore_order_stock(conn, order_id)
+    conn.commit()
+    conn.close()
+    return True, None
 
 
 def get_reviews_for_product(product_id):
@@ -1285,6 +1388,21 @@ def orders():
         "orders.html",
         orders=get_orders_for_user(user_id),
     )
+
+
+@app.route("/orders/<int:order_id>/cancel", methods=["POST"])
+def order_cancel(order_id):
+    user_id = current_user_id()
+    if user_id is None:
+        flash("ログインが必要です。", "error")
+        return redirect(url_for("login"))
+
+    ok, error = cancel_order_by_user(order_id, user_id)
+    if ok:
+        flash("注文をキャンセルし、在庫を戻しました。", "success")
+    else:
+        flash(error, "error")
+    return redirect(url_for("orders"))
 
 
 @app.route("/contact", methods=["GET", "POST"])
