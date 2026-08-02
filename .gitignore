@@ -4,3 +4,5 @@ uploads/
 .env
 node_modules/
 deploy/cloudflare/.wrangler/
+__pycache__/
+*.pyc
