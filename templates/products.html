@@ -4,6 +4,7 @@
 
 {% block content %}
 <h1>商品一覧</h1>
+<p class="section-lead page-lead">新鮮なブルーベリー商品からお選びください。</p>
 
 <form class="search-form" action="{{ url_for('products') }}" method="get">
   <div class="form-field">
@@ -23,31 +24,34 @@
 {% endif %}
 
 {% if products %}
-<ul class="product-list">
+<ul class="product-grid">
   {% for product in products %}
-  <li class="product-item">
-    {% if product.image_filename %}
-    <a href="{{ url_for('product_detail', product_id=product.id) }}">
+  <li class="product-card">
+    <a class="product-card-media" href="{{ url_for('product_detail', product_id=product.id) }}">
+      {% if product.image_filename %}
       <img
-        class="product-image-thumb"
         src="{{ url_for('uploaded_file', filename=product.image_filename) }}"
         alt="{{ product.name }}"
       />
+      {% else %}
+      <span class="product-card-placeholder" aria-hidden="true"></span>
+      {% endif %}
     </a>
-    {% endif %}
-    <div>
+    <div class="product-card-body">
       <a class="product-name" href="{{ url_for('product_detail', product_id=product.id) }}">
         {{ product.name }}
       </a>
-      <span class="price"> — {{ product.price|yen }}円</span>
+      <p class="price">{{ product.price|yen }}円</p>
       {% if product.stock is none or product.stock < 1 %}
-      <span class="muted">（売り切れ）</span>
+      <p class="muted">売り切れ</p>
       {% else %}
-      <span class="muted">（在庫 {{ product.stock }}）</span>
+      <p class="muted">在庫 {{ product.stock }}</p>
       {% endif %}
+      <a class="button button-block" href="{{ url_for('product_detail', product_id=product.id) }}">
+        詳しく見る
+      </a>
       <form
         class="inline-form"
-        style="margin-top: 0.35rem"
         action="{{ url_for('product_favorite_toggle', product_id=product.id) }}"
         method="post"
       >

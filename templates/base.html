@@ -7,22 +7,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   </head>
-  <body>
+  <body class="{% block body_class %}{% endblock %}">
     <div class="page">
       <header class="site-header">
-        <p class="brand">
-          <a href="{{ url_for('index') }}">FRESHBERRYMARKET</a>
-        </p>
-        <p class="tagline">Farm to Palm</p>
+        <div class="header-brand">
+          <p class="brand">
+            <a href="{{ url_for('index') }}">FRESHBERRYMARKET</a>
+          </p>
+          <p class="tagline">Farm to Palm</p>
+          <p class="brand-ja">旬のブルーベリーを、そのままお届け。</p>
+        </div>
         {% include "_nav.html" %}
       </header>
 
-      <main class="site-main">
+      <main class="site-main {% block main_class %}{% endblock %}">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
           <ul class="flash-list">

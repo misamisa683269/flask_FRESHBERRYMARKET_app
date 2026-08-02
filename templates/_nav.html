@@ -3,7 +3,6 @@
   <a href="{{ url_for('products') }}">商品一覧</a>
   <a href="{{ url_for('cart') }}">カート</a>
   <a href="{{ url_for('orders') }}">自分の注文</a>
-  <a href="{{ url_for('contact') }}">お問い合わせ</a>
   {% if is_logged_in %}
   <a href="{{ url_for('favorites') }}">お気に入り</a>
   {% endif %}
@@ -21,4 +20,5 @@
   <a href="{{ url_for('login') }}">ログイン</a>
   <a href="{{ url_for('register') }}">新規登録</a>
   {% endif %}
+  <a class="nav-cta" href="{{ url_for('contact') }}">お問い合わせ</a>
 </nav>

@@ -1,14 +1,61 @@
 {% extends "base.html" %}
 
 {% block title %}FRESHBERRYMARKET{% endblock %}
+{% block body_class %}page-home{% endblock %}
+{% block main_class %}site-main--home{% endblock %}
 
 {% block content %}
-<section class="hero">
-  <h1 class="hero-title">FRESHBERRYMARKET</h1>
-  <p class="hero-sub">Farm to Palm — 畑から、あなたの手のひらへ。</p>
-  <div class="hero-actions">
-    <a class="button" href="{{ url_for('products') }}">商品一覧を見る</a>
-    <a class="button button-light" href="{{ url_for('cart') }}">カートを見る</a>
+<section class="hero-band">
+  <div class="hero-copy">
+    <p class="hero-kicker">Farm to Palm</p>
+    <h1 class="hero-title">FRESHBERRYMARKET</h1>
+    <p class="hero-sub">畑から、あなたの手のひらへ。</p>
+    <p class="hero-desc">
+      採れたてブルーベリーをはじめ、旬の果実をお届けするオンラインショップです。
+      カート・お気に入り・レビューで、お買い物をもっと楽しく。
+    </p>
+    <div class="hero-actions">
+      <a class="button" href="{{ url_for('products') }}">商品一覧を見る</a>
+      <a class="button button-light" href="{{ url_for('cart') }}">カートを見る</a>
+    </div>
+  </div>
+  <div class="hero-visual" aria-hidden="true">
+    <img
+      src="{{ url_for('static', filename='images/hero-blueberries.jpg') }}"
+      alt=""
+      width="1280"
+      height="836"
+    />
+  </div>
+</section>
+
+<section class="home-features">
+  <h2 class="section-title">こだわり</h2>
+  <p class="section-lead">自然の恵みを、ていねいにお届けします。</p>
+  <ul class="feature-list">
+    <li class="feature-item">
+      <span class="feature-icon" aria-hidden="true"></span>
+      <h3>旬の味わい</h3>
+      <p>採れたての風味を大切に、新鮮なままお届けします。</p>
+    </li>
+    <li class="feature-item">
+      <span class="feature-icon feature-icon--hand" aria-hidden="true"></span>
+      <h3>ていねいな選別</h3>
+      <p>ひとつひとつ確認し、自信のある実だけをお届けします。</p>
+    </li>
+    <li class="feature-item">
+      <span class="feature-icon feature-icon--gift" aria-hidden="true"></span>
+      <h3>日々の食卓へ</h3>
+      <p>そのまま食べても、ジャムやスイーツにもぴったりです。</p>
+    </li>
+  </ul>
+</section>
+
+<section class="home-banner">
+  <div class="home-banner-inner">
+    <h2>大切な人への贈り物にも</h2>
+    <p>旬のおいしさを、心を込めてお届けします。</p>
+    <a class="button" href="{{ url_for('products') }}">商品を見る</a>
   </div>
 </section>
 {% endblock %}
