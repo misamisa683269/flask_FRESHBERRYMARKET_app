@@ -12,13 +12,19 @@
   <div class="form-field">
     <label>
       ユーザー名:
-      <input type="text" name="username" required />
+      <input type="text" name="username" required autocomplete="username" />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
+      メールアドレス:
+      <input type="email" name="email" required autocomplete="email" />
     </label>
   </div>
   <div class="form-field">
     <label>
       パスワード（8文字以上）:
-      <input type="password" name="password" minlength="8" required />
+      <input type="password" name="password" minlength="8" required autocomplete="new-password" />
     </label>
   </div>
   <button type="submit">登録する</button>

@@ -18,6 +18,12 @@
   </div>
   <div class="form-field">
     <label>
+      メールアドレス:
+      <input type="email" name="email" required autocomplete="off" />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
       パスワード（8文字以上）:
       <input type="password" name="password" minlength="8" required autocomplete="new-password" />
     </label>
@@ -31,6 +37,11 @@
   {% for admin in admins %}
   <li>
     <strong>{{ admin.username }}</strong>
+    {% if admin.email %}
+    <span class="muted">（{{ admin.email }}）</span>
+    {% else %}
+    <span class="muted">（メール未登録）</span>
+    {% endif %}
     {% if admin.id == current_user_id %}
     <span class="muted">（自分）</span>
     {% elif admins|length <= 1 %}

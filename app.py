@@ -1,6 +1,7 @@
+import secrets
 import sqlite3
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -36,6 +37,7 @@ STOCK_RESTORE_STATUSES = frozenset({"キャンセル", "返品完了"})
 SHIPPING_FEE = 500
 FREE_SHIPPING_THRESHOLD = 5000
 MIN_PASSWORD_LENGTH = 8
+PASSWORD_RESET_HOURS = 1
 
 SEED_PRODUCTS = [
     (
@@ -104,6 +106,27 @@ def init_db():
     if "role" not in user_columns:
         conn.execute("ALTER TABLE users ADD COLUMN role TEXT")
         conn.execute("UPDATE users SET role = 'user' WHERE role IS NULL")
+    if "email" not in user_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN email TEXT")
+    conn.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email
+        ON users (email)
+        WHERE email IS NOT NULL AND email != ''
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token TEXT NOT NULL UNIQUE,
+            user_id INTEGER NOT NULL,
+            expires_at TEXT NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+        """
+    )
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS orders (
@@ -229,10 +252,15 @@ def init_db():
     if admin_count == 0:
         conn.execute(
             """
-            INSERT INTO users (username, password_hash, role)
-            VALUES (?, ?, ?)
+            INSERT INTO users (username, password_hash, role, email)
+            VALUES (?, ?, ?, ?)
             """,
-            ("admin", generate_password_hash("admin123"), "admin"),
+            (
+                "admin",
+                generate_password_hash("admin123"),
+                "admin",
+                "admin@example.com",
+            ),
         )
 
     conn.commit()
@@ -356,15 +384,20 @@ def delete_product(product_id):
         remove_product_image_file(product["image_filename"])
 
 
-def create_user(username, password, role="user"):
+def is_valid_email(email):
+    email = (email or "").strip()
+    return "@" in email and "." in email.split("@")[-1]
+
+
+def create_user(username, password, email, role="user"):
     conn = get_db()
     try:
         cursor = conn.execute(
             """
-            INSERT INTO users (username, password_hash, role)
-            VALUES (?, ?, ?)
+            INSERT INTO users (username, password_hash, role, email)
+            VALUES (?, ?, ?, ?)
             """,
-            (username, generate_password_hash(password), role),
+            (username, generate_password_hash(password), role, email),
         )
         conn.commit()
         user_id = cursor.lastrowid
@@ -379,7 +412,7 @@ def get_user_by_username(username):
     conn = get_db()
     user = conn.execute(
         """
-        SELECT id, username, password_hash, role
+        SELECT id, username, password_hash, role, email
         FROM users
         WHERE username = ?
         """,
@@ -389,18 +422,140 @@ def get_user_by_username(username):
     return user
 
 
-def update_username(user_id, new_username):
+def get_user_by_email(email):
+    conn = get_db()
+    user = conn.execute(
+        """
+        SELECT id, username, password_hash, role, email
+        FROM users
+        WHERE lower(email) = lower(?)
+        """,
+        (email,),
+    ).fetchone()
+    conn.close()
+    return user
+
+
+def get_user_by_username_or_email(identifier):
+    identifier = (identifier or "").strip()
+    if not identifier:
+        return None
+    user = get_user_by_username(identifier)
+    if user is not None:
+        return user
+    if "@" in identifier:
+        return get_user_by_email(identifier)
+    return None
+
+
+def update_account(user_id, new_username, new_email):
+    """ユーザー名とメールを更新。(成功したか, エラーメッセージ) を返す。"""
+    existing_name = get_user_by_username(new_username)
+    if existing_name is not None and existing_name["id"] != user_id:
+        return False, "そのユーザー名はすでに使われています。"
+    existing_email = get_user_by_email(new_email)
+    if existing_email is not None and existing_email["id"] != user_id:
+        return False, "そのメールアドレスはすでに使われています。"
+
     conn = get_db()
     try:
         conn.execute(
-            "UPDATE users SET username = ? WHERE id = ?",
-            (new_username, user_id),
+            "UPDATE users SET username = ?, email = ? WHERE id = ?",
+            (new_username, new_email, user_id),
         )
         conn.commit()
     except sqlite3.IntegrityError:
         conn.close()
-        return False
+        return False, "そのユーザー名またはメールアドレスはすでに使われています。"
     conn.close()
+    return True, None
+
+
+def update_password(user_id, new_password):
+    conn = get_db()
+    conn.execute(
+        "UPDATE users SET password_hash = ? WHERE id = ?",
+        (generate_password_hash(new_password), user_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def create_password_reset_token(user_id):
+    token = secrets.token_urlsafe(32)
+    expires_at = (
+        datetime.now() + timedelta(hours=PASSWORD_RESET_HOURS)
+    ).isoformat(timespec="seconds")
+    conn = get_db()
+    conn.execute(
+        """
+        UPDATE password_reset_tokens
+        SET used = 1
+        WHERE user_id = ? AND used = 0
+        """,
+        (user_id,),
+    )
+    conn.execute(
+        """
+        INSERT INTO password_reset_tokens (token, user_id, expires_at, used)
+        VALUES (?, ?, ?, 0)
+        """,
+        (token, user_id, expires_at),
+    )
+    conn.commit()
+    conn.close()
+    return token
+
+
+def get_password_reset_token(token):
+    conn = get_db()
+    row = conn.execute(
+        """
+        SELECT id, token, user_id, expires_at, used
+        FROM password_reset_tokens
+        WHERE token = ?
+        """,
+        (token,),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def mark_password_reset_token_used(token_id):
+    conn = get_db()
+    conn.execute(
+        "UPDATE password_reset_tokens SET used = 1 WHERE id = ?",
+        (token_id,),
+    )
+    conn.commit()
+    conn.close()
+
+
+def send_password_reset_notice(to_email, reset_url, username):
+    """開発中はコンソール出力。MAIL_SUPPRESS_SEND=true なら実送信しない。"""
+    subject = "【FRESHBERRYMARKET】パスワード再設定のご案内"
+    body = (
+        f"{username} さん\n\n"
+        "パスワード再設定のリクエストを受け付けました。\n"
+        "次のURLから、1時間以内に新しいパスワードを設定してください。\n\n"
+        f"{reset_url}\n\n"
+        "心当たりがない場合は、このメッセージを無視してください。"
+    )
+    print("\n===== Password reset email =====")
+    print(f"To: {to_email or '(メール未登録・コンソール確認用)'}")
+    print(f"Subject: {subject}")
+    print("Body:")
+    print(body)
+    print("===== End of email =====\n")
+
+    suppress = os.environ.get("MAIL_SUPPRESS_SEND", "true").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if suppress:
+        print("(MAIL_SUPPRESS_SEND=true — SMTP送信は行いません。上のURLで再設定できます)")
     return True
 
 
@@ -408,7 +563,7 @@ def get_admin_users():
     conn = get_db()
     users = conn.execute(
         """
-        SELECT id, username
+        SELECT id, username, email
         FROM users
         WHERE role = 'admin'
         ORDER BY id
@@ -422,7 +577,7 @@ def get_user_by_id(user_id):
     conn = get_db()
     user = conn.execute(
         """
-        SELECT id, username, password_hash, role
+        SELECT id, username, password_hash, role, email
         FROM users
         WHERE id = ?
         """,
@@ -446,6 +601,10 @@ def delete_admin_user(target_user_id, acting_user_id):
         return False, "管理者があと1人のため削除できません。"
 
     conn = get_db()
+    conn.execute(
+        "DELETE FROM password_reset_tokens WHERE user_id = ?",
+        (target_user_id,),
+    )
     conn.execute("DELETE FROM favorites WHERE user_id = ?", (target_user_id,))
     cursor = conn.execute(
         "DELETE FROM users WHERE id = ? AND role = 'admin'",
@@ -1062,15 +1221,21 @@ def register():
     error = None
     if request.method == "POST":
         username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
-        if not username or not password:
-            error = "ユーザー名とパスワードを入力してください。"
+        if not username or not email or not password:
+            error = "ユーザー名・メールアドレス・パスワードを入力してください。"
+        elif not is_valid_email(email):
+            error = "メールアドレスの形式が正しくありません。"
         elif len(password) < MIN_PASSWORD_LENGTH:
             error = f"パスワードは{MIN_PASSWORD_LENGTH}文字以上にしてください。"
         else:
-            user_id = create_user(username, password)
+            user_id = create_user(username, password, email)
             if user_id is None:
-                error = "そのユーザー名はすでに使われています。"
+                if get_user_by_username(username) is not None:
+                    error = "そのユーザー名はすでに使われています。"
+                else:
+                    error = "そのメールアドレスはすでに使われています。"
             else:
                 session["user_id"] = user_id
                 session["username"] = username
@@ -1098,6 +1263,53 @@ def login():
     return render_template("login.html", error=error)
 
 
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        identifier = request.form.get("identifier", "").strip()
+        user = get_user_by_username_or_email(identifier) if identifier else None
+        if user is not None:
+            token = create_password_reset_token(user["id"])
+            reset_url = url_for("reset_password", token=token, _external=True)
+            send_password_reset_notice(user["email"], reset_url, user["username"])
+        flash(
+            "入力内容が登録されている場合、パスワード再設定のご案内を送りました。"
+            "開発中はサーバーのターミナルに再設定URLが表示されます。",
+            "success",
+        )
+        return redirect(url_for("login"))
+    return render_template("forgot_password.html")
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    row = get_password_reset_token(token)
+    now = datetime.now().isoformat(timespec="seconds")
+    if (
+        row is None
+        or row["used"]
+        or row["expires_at"] < now
+    ):
+        flash("再設定リンクが無効か、有効期限切れです。もう一度お試しください。", "error")
+        return redirect(url_for("forgot_password"))
+
+    error = None
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        password_confirm = request.form.get("password_confirm", "")
+        if len(password) < MIN_PASSWORD_LENGTH:
+            error = f"パスワードは{MIN_PASSWORD_LENGTH}文字以上にしてください。"
+        elif password != password_confirm:
+            error = "パスワード（確認）が一致しません。"
+        else:
+            update_password(row["user_id"], password)
+            mark_password_reset_token_used(row["id"])
+            flash("パスワードを再設定しました。ログインしてください。", "success")
+            return redirect(url_for("login"))
+
+    return render_template("reset_password.html", error=error, token=token)
+
+
 @app.route("/logout")
 def logout():
     session.pop("user_id", None)
@@ -1114,25 +1326,32 @@ def account():
         flash("ログインが必要です。", "error")
         return redirect(url_for("login"))
 
+    user = get_user_by_id(user_id)
+    if user is None:
+        flash("ユーザーが見つかりません。", "error")
+        return redirect(url_for("login"))
+
     error = None
     if request.method == "POST":
         new_username = request.form.get("username", "").strip()
-        if not new_username:
-            error = "ユーザー名を入力してください。"
-        elif new_username == session.get("username"):
-            flash("ユーザー名は変更されていません。", "success")
-            return redirect(url_for("account"))
-        elif update_username(user_id, new_username):
-            session["username"] = new_username
-            flash("ユーザー名を変更しました。", "success")
-            return redirect(url_for("account"))
+        new_email = request.form.get("email", "").strip()
+        if not new_username or not new_email:
+            error = "ユーザー名とメールアドレスを入力してください。"
+        elif not is_valid_email(new_email):
+            error = "メールアドレスの形式が正しくありません。"
         else:
-            error = "そのユーザー名はすでに使われています。"
+            ok, message = update_account(user_id, new_username, new_email)
+            if ok:
+                session["username"] = new_username
+                flash("アカウント情報を更新しました。", "success")
+                return redirect(url_for("account"))
+            error = message
 
     return render_template(
         "account.html",
         error=error,
-        username=session.get("username", ""),
+        username=user["username"],
+        email=user["email"] or "",
     )
 
 
@@ -1705,15 +1924,21 @@ def admin_user_new():
     error = None
     if request.method == "POST":
         username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
-        if not username or not password:
-            error = "ユーザー名とパスワードを入力してください。"
+        if not username or not email or not password:
+            error = "ユーザー名・メールアドレス・パスワードを入力してください。"
+        elif not is_valid_email(email):
+            error = "メールアドレスの形式が正しくありません。"
         elif len(password) < MIN_PASSWORD_LENGTH:
             error = f"パスワードは{MIN_PASSWORD_LENGTH}文字以上にしてください。"
         else:
-            user_id = create_user(username, password, role="admin")
+            user_id = create_user(username, password, email, role="admin")
             if user_id is None:
-                error = "そのユーザー名はすでに使われています。"
+                if get_user_by_username(username) is not None:
+                    error = "そのユーザー名はすでに使われています。"
+                else:
+                    error = "そのメールアドレスはすでに使われています。"
             else:
                 flash(f"管理者「{username}」を追加しました。", "success")
                 return redirect(url_for("admin_user_new"))
