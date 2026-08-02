@@ -49,6 +49,7 @@ systemctl enable freshberrymarket
 systemctl restart freshberrymarket
 
 echo "==> nginx"
+cp deploy/vps/cloudflare-realip.conf /etc/nginx/conf.d/cloudflare-realip.conf
 cp deploy/vps/nginx-freshberrymarket.conf /etc/nginx/sites-available/freshberrymarket
 ln -sfn /etc/nginx/sites-available/freshberrymarket /etc/nginx/sites-enabled/freshberrymarket
 rm -f /etc/nginx/sites-enabled/default

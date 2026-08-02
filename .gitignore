@@ -1,8 +1,13 @@
 .venv
 *.db
-uploads/
+uploads/*
+!uploads/.gitkeep
+data/*
+!data/.gitkeep
 .env
 node_modules/
 deploy/cloudflare/.wrangler/
 __pycache__/
 *.pyc
+.DS_Store
+docs.zip

@@ -6,6 +6,10 @@ __pycache__
 .git
 uploads/*
 !uploads/.gitkeep
+data/*
+!data/.gitkeep
 deploy/cloudflare/node_modules
 docs
 *.md
+.DS_Store
+docs.zip

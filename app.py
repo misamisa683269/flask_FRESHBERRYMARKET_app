@@ -26,11 +26,32 @@ import stripe
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
+APP_ENV = os.environ.get("APP_ENV", "development").strip().lower()
+DATABASE = Path(
+    os.environ.get("DATABASE_PATH", str(BASE_DIR / "products.db"))
+).expanduser()
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "freshberrymarket-dev-secret")
 # Cloudflare / リバースプロキシ配下でも https URL を正しく生成する
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 csrf = CSRFProtect(app)
+
+if APP_ENV == "production":
+    if (
+        not os.environ.get("SECRET_KEY")
+        or app.secret_key in {"freshberrymarket-dev-secret", "change-me-to-a-long-random-string"}
+        or len(app.secret_key) < 24
+    ):
+        raise RuntimeError(
+            "本番では強力な SECRET_KEY を .env に設定してください（24文字以上推奨）。"
+        )
+    app.config.update(
+        SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        PREFERRED_URL_SCHEME="https",
+    )
 
 
 @app.template_filter("yen")
@@ -44,7 +65,6 @@ def yen_filter(value):
         return str(value)
 
 
-DATABASE = BASE_DIR / "products.db"
 UPLOAD_DIR = BASE_DIR / "uploads"
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 ORDER_STATUSES = ("受付", "準備中", "発送済み", "キャンセル", "返品受付", "返品完了")
@@ -77,6 +97,7 @@ SEED_PRODUCTS = [
 
 
 def get_db():
+    DATABASE.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
@@ -84,6 +105,7 @@ def get_db():
 
 def init_db():
     UPLOAD_DIR.mkdir(exist_ok=True)
+    DATABASE.parent.mkdir(parents=True, exist_ok=True)
     conn = get_db()
     conn.execute(
         """
@@ -1224,6 +1246,12 @@ def inject_auth():
         "is_logged_in": current_user_id() is not None,
         "is_admin": is_admin(),
     }
+
+
+@app.route("/health")
+def health():
+    """VPS / Docker / Cloudflare 用の生存確認（CSRF不要）"""
+    return {"status": "ok", "app": "freshberrymarket"}, 200
 
 
 @app.route("/")

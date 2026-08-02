@@ -141,33 +141,29 @@ flask_FRESHBERRYMARKET_app/
 
 ## 常時公開（VPS + Cloudflare DNS）【推奨】
 
-Cursor / 自宅PCを閉じてもサイトを開けるようにするには、Ubuntu VPS に移します。
+詳細まとめ: [`deploy/PRODUCTION.md`](deploy/PRODUCTION.md)  
+手順書: [`deploy/vps/README.md`](deploy/vps/README.md)
 
-詳しい手順: [`deploy/vps/README.md`](deploy/vps/README.md)
-
-要約:
-
-1. Ubuntu VPS を契約し SSH で入る
-2. リポジトリを clone してセットアップ
+**Docker Compose（推奨）**
 
 ```bash
 git clone https://github.com/misamisa683269/flask_FRESHBERRYMARKET_app.git /var/www/freshberrymarket
 cd /var/www/freshberrymarket
-sudo bash deploy/vps/setup-ubuntu.sh
-sudo nano /var/www/freshberrymarket/.env   # Stripe キー等
-sudo systemctl restart freshberrymarket
+sudo bash deploy/vps/setup-docker.sh
+sudo nano .env
+docker compose up -d --build
 ```
 
-3. Cloudflare DNS で `freshberrymarket.com` を **VPS の IP（Aレコード）** に向ける  
-   （自宅 Tunnel 用 CNAME は削除）
-4. 以降の更新: `sudo bash deploy/vps/deploy.sh`
+**DNS 切替（Tunnel → VPS）**
 
-含まれるファイル:
+```bash
+export CLOUDFLARE_API_TOKEN=...
+export CLOUDFLARE_ZONE_ID=...
+export VPS_IP=x.x.x.x
+./scripts/cloudflare-point-dns-to-vps.sh
+```
 
-- `deploy/vps/setup-ubuntu.sh` … 初回セットアップ
-- `deploy/vps/deploy.sh` … 更新
-- `deploy/vps/freshberrymarket.service` … systemd
-- `deploy/vps/nginx-freshberrymarket.conf` … nginx
+生存確認: `https://freshberrymarket.com/health`
 
 ## Cloudflare へのデプロイ（Containers）
 
