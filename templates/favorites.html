@@ -25,13 +25,13 @@
       <span class="price"> — {{ product.price }}円</span>
       <form
         class="inline-form"
-        style="margin-top: 0.5rem"
+        style="margin-top: 0.35rem"
         action="{{ url_for('product_favorite_toggle', product_id=product.id) }}"
         method="post"
       >
         {% include "_csrf.html" %}
         <input type="hidden" name="next" value="favorites" />
-        <button type="submit" class="button-secondary">お気に入り解除</button>
+        <button type="submit" class="favorite-toggle is-active">♡ 解除</button>
       </form>
     </div>
   </li>
