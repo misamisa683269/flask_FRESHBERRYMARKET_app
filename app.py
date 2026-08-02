@@ -418,6 +418,47 @@ def get_admin_users():
     return users
 
 
+def get_user_by_id(user_id):
+    conn = get_db()
+    user = conn.execute(
+        """
+        SELECT id, username, password_hash, role
+        FROM users
+        WHERE id = ?
+        """,
+        (user_id,),
+    ).fetchone()
+    conn.close()
+    return user
+
+
+def delete_admin_user(target_user_id, acting_user_id):
+    """管理者を削除する。(成功したか, メッセージ) を返す。"""
+    if target_user_id == acting_user_id:
+        return False, "自分自身のアカウントは削除できません。"
+
+    target = get_user_by_id(target_user_id)
+    if target is None or target["role"] != "admin":
+        return False, "削除できる管理者アカウントが見つかりません。"
+
+    admins = get_admin_users()
+    if len(admins) <= 1:
+        return False, "管理者があと1人のため削除できません。"
+
+    conn = get_db()
+    conn.execute("DELETE FROM favorites WHERE user_id = ?", (target_user_id,))
+    cursor = conn.execute(
+        "DELETE FROM users WHERE id = ? AND role = 'admin'",
+        (target_user_id,),
+    )
+    conn.commit()
+    deleted = cursor.rowcount > 0
+    conn.close()
+    if not deleted:
+        return False, "管理者の削除に失敗しました。"
+    return True, f"管理者「{target['username']}」を削除しました。"
+
+
 def build_order_confirmation_email(order_id, items, subtotal, shipping_fee, total, shipping):
     lines = [
         "FRESHBERRYMARKET をご利用いただきありがとうございます。",
@@ -1681,7 +1722,19 @@ def admin_user_new():
         "admin_user_new.html",
         error=error,
         admins=get_admin_users(),
+        current_user_id=current_user_id(),
     )
+
+
+@app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
+def admin_user_delete(user_id):
+    blocked = require_admin()
+    if blocked is not None:
+        return blocked
+
+    ok, message = delete_admin_user(user_id, current_user_id())
+    flash(message, "success" if ok else "error")
+    return redirect(url_for("admin_user_new"))
 
 
 @app.route("/admin/contacts")

@@ -4,7 +4,7 @@
 
 {% block content %}
 <h1>管理者アカウント追加</h1>
-<p class="muted">既存の管理者だけが、新しい管理者を追加できます。</p>
+<p class="muted">既存の管理者だけが、新しい管理者を追加・削除できます。</p>
 {% if error %}
 <p class="error">{{ error }}</p>
 {% endif %}
@@ -27,10 +27,28 @@
 
 {% if admins %}
 <h2>登録済みの管理者</h2>
-<ul>
+<ul class="cart-list">
   {% for admin in admins %}
-  <li>{{ admin.username }}</li>
+  <li>
+    <strong>{{ admin.username }}</strong>
+    {% if admin.id == current_user_id %}
+    <span class="muted">（自分）</span>
+    {% elif admins|length <= 1 %}
+    <span class="muted">（最後の管理者のため削除不可）</span>
+    {% else %}
+    <form
+      class="inline-form"
+      action="{{ url_for('admin_user_delete', user_id=admin.id) }}"
+      method="post"
+      onsubmit="return confirm('管理者「{{ admin.username }}」を削除しますか？');"
+    >
+      {% include "_csrf.html" %}
+      <button type="submit" class="button-secondary">削除</button>
+    </form>
+    {% endif %}
+  </li>
   {% endfor %}
 </ul>
+<p class="muted">自分自身、および管理者が1人だけのときは削除できません。</p>
 {% endif %}
 {% endblock %}
