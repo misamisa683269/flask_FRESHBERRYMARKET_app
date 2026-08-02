@@ -139,8 +139,44 @@ flask_FRESHBERRYMARKET_app/
 └── products.db         # SQLite（起動時作成・Git 管理外）
 ```
 
+## Cloudflare へのデプロイ（Containers）
+
+Cloudflare Containers（Workers Paid が必要）で公開できます。  
+この Mac に Docker が入っていること、Cloudflare アカウントがあることが前提です。
+
+```bash
+# 1) 依存関係
+cd deploy/cloudflare
+npm install
+
+# 2) ログイン
+npx wrangler login
+
+# 3) シークレットを設定（値は自分の .env から）
+npx wrangler secret put SECRET_KEY
+npx wrangler secret put STRIPE_SECRET_KEY
+npx wrangler secret put STRIPE_PUBLISHABLE_KEY
+
+# 4) デプロイ（Docker 起動済みであること）
+npm run deploy
+```
+
+デプロイ後、`*.workers.dev` の URL が表示されます。  
+カスタムドメインは Cloudflare Registrar / DNS で Workers に紐づけます。
+
+### 一時公開（Quick Tunnel）
+
+Docker なしで「とりあえず見せる」だけなら、ローカル起動中に:
+
+```bash
+brew install cloudflared
+cloudflared tunnel --url http://127.0.0.1:8000
+```
+
+表示された `https://xxxx.trycloudflare.com` でアクセスできます（PC 起動中のみ）。
+
 ## 補足
 
 - 初回起動時に DB と初期商品が作られます
 - `.gitignore` 対象: `.venv` / `*.db` / `uploads/` / `.env`
-- 学習用の簡易アプリです（本番向けのデプロイ設定は含みません。決済はテストモードのみ）
+- 学習用の簡易アプリです（決済はテストモード想定。Containers ではディスクが永続しない場合があり、SQLite データは消えることがあります）

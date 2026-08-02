@@ -17,6 +17,7 @@ from flask import (
     url_for,
 )
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 import os
@@ -27,6 +28,8 @@ load_dotenv(BASE_DIR / ".env")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "freshberrymarket-dev-secret")
+# Cloudflare / リバースプロキシ配下でも https URL を正しく生成する
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 csrf = CSRFProtect(app)
 
 
@@ -2013,6 +2016,7 @@ def admin_order_status(order_id):
     return redirect(url_for("admin_orders"))
 
 
+init_db()
+
 if __name__ == "__main__":
-    init_db()
     app.run(port=8000, debug=True)

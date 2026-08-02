@@ -1,0 +1,13 @@
+{
+  "name": "freshberrymarket-cloudflare",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0",
+    "@cloudflare/containers": "^0.0.28",
+    "typescript": "^5.8.0"
+  }
+}

@@ -1,0 +1,21 @@
+name = "freshberrymarket"
+main = "src/index.ts"
+compatibility_date = "2026-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# コンテナ側の環境変数は Dashboard の Secrets / vars で追加してください
+# SECRET_KEY / STRIPE_SECRET_KEY / STRIPE_PUBLISHABLE_KEY / MAIL_SUPPRESS_SEND
+
+[[containers]]
+max_instances = 1
+class_name = "FreshberryContainer"
+image = "../../Dockerfile"
+
+[[durable_objects.bindings]]
+name = "FRESHBERRY_CONTAINER"
+class_name = "FreshberryContainer"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FreshberryContainer"]

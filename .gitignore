@@ -2,3 +2,5 @@
 *.db
 uploads/
 .env
+node_modules/
+deploy/cloudflare/.wrangler/

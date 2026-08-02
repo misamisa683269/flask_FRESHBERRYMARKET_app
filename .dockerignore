@@ -1,0 +1,11 @@
+.venv
+__pycache__
+*.pyc
+*.db
+.env
+.git
+uploads/*
+!uploads/.gitkeep
+deploy/cloudflare/node_modules
+docs
+*.md
