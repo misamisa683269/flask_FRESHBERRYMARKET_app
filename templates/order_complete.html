@@ -21,19 +21,19 @@
 <ul class="order-items">
   {% for item in items %}
   <li>
-    {{ item.name }} — {{ item.price }}円 × {{ item.quantity }}
-    = {{ item.subtotal }}円
+    {{ item.name }} — {{ item.price|yen }}円 × {{ item.quantity }}
+    = {{ item.subtotal|yen }}円
   </li>
   {% endfor %}
 </ul>
-<p>小計: {{ order.subtotal if order.subtotal is not none else order.total }}円</p>
+<p>小計: {{ (order.subtotal if order.subtotal is not none else order.total)|yen }}円</p>
 <p>
   送料:
   {% if (order.shipping_fee or 0) == 0 %}
   無料
   {% else %}
-  {{ order.shipping_fee }}円
+  {{ order.shipping_fee|yen }}円
   {% endif %}
 </p>
-<p class="total">合計: {{ order.total }}円</p>
+<p class="total">合計: {{ order.total|yen }}円</p>
 {% endblock %}

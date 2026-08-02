@@ -29,6 +29,18 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "freshberrymarket-dev-secret")
 csrf = CSRFProtect(app)
 
+
+@app.template_filter("yen")
+def yen_filter(value):
+    """金額表示用。1200 → '1,200'（円はテンプレート側で付ける）"""
+    if value is None:
+        return "0"
+    try:
+        return f"{int(value):,}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
 DATABASE = BASE_DIR / "products.db"
 UPLOAD_DIR = BASE_DIR / "uploads"
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}

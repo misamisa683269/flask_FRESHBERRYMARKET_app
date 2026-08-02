@@ -22,21 +22,21 @@
     <ul class="order-items">
       {% for item in entry.order_items %}
       <li>
-        {{ item.name }} — {{ item.price }}円 × {{ item.quantity }}
-        = {{ item.subtotal }}円
+        {{ item.name }} — {{ item.price|yen }}円 × {{ item.quantity }}
+        = {{ item.subtotal|yen }}円
       </li>
       {% endfor %}
     </ul>
-    <p>小計: {{ entry.order.subtotal if entry.order.subtotal is not none else entry.order.total }}円</p>
+    <p>小計: {{ (entry.order.subtotal if entry.order.subtotal is not none else entry.order.total)|yen }}円</p>
     <p>
       送料:
       {% if (entry.order.shipping_fee or 0) == 0 %}
       無料
       {% else %}
-      {{ entry.order.shipping_fee }}円
+      {{ entry.order.shipping_fee|yen }}円
       {% endif %}
     </p>
-    <p class="total">合計: {{ entry.order.total }}円</p>
+    <p class="total">合計: {{ entry.order.total|yen }}円</p>
     <form
       class="inline-form"
       action="{{ url_for('admin_order_status', order_id=entry.order.id) }}"

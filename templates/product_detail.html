@@ -13,7 +13,7 @@
   />
 </p>
 {% endif %}
-<p class="price">価格: {{ product.price }}円</p>
+<p class="price">価格: {{ product.price|yen }}円</p>
 <p>{{ product.description }}</p>
 {% if product.stock is none or product.stock < 1 %}
 <p class="error">売り切れです。</p>

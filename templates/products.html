@@ -39,7 +39,7 @@
       <a class="product-name" href="{{ url_for('product_detail', product_id=product.id) }}">
         {{ product.name }}
       </a>
-      <span class="price"> — {{ product.price }}円</span>
+      <span class="price"> — {{ product.price|yen }}円</span>
       {% if product.stock is none or product.stock < 1 %}
       <span class="muted">（売り切れ）</span>
       {% else %}

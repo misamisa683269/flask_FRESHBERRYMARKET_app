@@ -10,23 +10,23 @@
   {% for item in items %}
   <li>
     <strong>{{ item.name }}</strong>
-    <span class="price"> — {{ item.price }}円 × {{ item.quantity }} = {{ item.subtotal }}円</span>
+    <span class="price"> — {{ item.price|yen }}円 × {{ item.quantity }} = {{ item.subtotal|yen }}円</span>
   </li>
   {% endfor %}
 </ul>
-<p>小計: {{ subtotal }}円</p>
+<p>小計: {{ subtotal|yen }}円</p>
 <p>
   送料:
   {% if shipping_fee == 0 %}
   無料
   {% else %}
-  {{ shipping_fee }}円
+  {{ shipping_fee|yen }}円
   {% endif %}
 </p>
 {% if shipping_fee > 0 %}
-<p class="muted">※商品小計が {{ free_shipping_threshold }}円以上で送料無料</p>
+<p class="muted">※商品小計が {{ free_shipping_threshold|yen }}円以上で送料無料</p>
 {% endif %}
-<p class="total">合計: {{ total }}円</p>
+<p class="total">合計: {{ total|yen }}円</p>
 
 <h2>配送先</h2>
 {% if error %}
