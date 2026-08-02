@@ -31,7 +31,9 @@
       >
         {% include "_csrf.html" %}
         <input type="hidden" name="next" value="favorites" />
-        <button type="submit" class="favorite-toggle is-active">♡ 解除</button>
+        <button type="submit" class="favorite-toggle is-active">
+          <span class="favorite-heart">♥</span> 解除
+        </button>
       </form>
     </div>
   </li>

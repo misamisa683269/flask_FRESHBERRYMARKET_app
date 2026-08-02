@@ -274,7 +274,19 @@ button.favorite-toggle:active {
 }
 
 button.favorite-toggle.is-active {
-  color: var(--berry);
+  color: var(--muted);
+}
+
+button.favorite-toggle.is-active .favorite-heart {
+  color: #c62828;
+}
+
+button.favorite-toggle.is-active:hover {
+  color: var(--berry-deep);
+}
+
+button.favorite-toggle.is-active:hover .favorite-heart {
+  color: #b71c1c;
 }
 
 .price,

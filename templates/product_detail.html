@@ -45,9 +45,13 @@
   {% include "_csrf.html" %}
   <input type="hidden" name="next" value="detail" />
   {% if is_favorited %}
-  <button type="submit" class="favorite-toggle is-active">♡ 解除</button>
+  <button type="submit" class="favorite-toggle is-active">
+    <span class="favorite-heart">♥</span> 解除
+  </button>
   {% else %}
-  <button type="submit" class="favorite-toggle">♡ お気に入り</button>
+  <button type="submit" class="favorite-toggle">
+    <span class="favorite-heart">♡</span> お気に入り
+  </button>
   {% endif %}
 </form>
 
