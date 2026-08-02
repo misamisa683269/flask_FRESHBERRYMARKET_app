@@ -1,0 +1,18 @@
+# 使い方:
+# 1) cloudflared tunnel login
+# 2) cloudflared tunnel create freshberrymarket
+# 3) このファイルを ~/.cloudflared/config.yml にコピーし、<TUNNEL_ID> を書き換える
+# 4) cloudflared tunnel route dns freshberrymarket freshberrymarket.com
+# 5) （任意） www も使うなら:
+#    cloudflared tunnel route dns freshberrymarket www.freshberrymarket.com
+# 6) アプリ起動後: cloudflared tunnel run freshberrymarket
+
+tunnel: <TUNNEL_ID>
+credentials-file: /Users/REPLACE_ME/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  - hostname: freshberrymarket.com
+    service: http://127.0.0.1:8000
+  - hostname: www.freshberrymarket.com
+    service: http://127.0.0.1:8000
+  - service: http_status:404

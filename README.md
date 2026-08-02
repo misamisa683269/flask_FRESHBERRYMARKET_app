@@ -175,6 +175,34 @@ cloudflared tunnel --url http://127.0.0.1:8000
 
 表示された `https://xxxx.trycloudflare.com` でアクセスできます（PC 起動中のみ）。
 
+### 取得済みドメインをつなぐ（Named Tunnel）
+
+`freshberrymarket.com` を、このPCで動いている Flask に向けます。
+
+1. Cloudflare Dashboard の **Workers & Pages** 検索欄は空でOK（Clear）
+2. ターミナル A でアプリ起動:
+
+```bash
+python app.py
+```
+
+3. ターミナル B でトンネル設定＆起動:
+
+```bash
+chmod +x scripts/setup-cloudflare-tunnel.sh
+./scripts/setup-cloudflare-tunnel.sh
+```
+
+初回はブラウザで Cloudflare ログインと、対象ゾーン（`freshberrymarket.com`）の許可が出ます。  
+成功すると DNS に CNAME が追加され、`https://freshberrymarket.com` で開けます。
+
+注意:
+- **このPCと `python app.py` / トンネルが動いている間だけ**公開されます
+- 常時公開したい場合は、あとで VPS や Containers へ移し、DNS の向き先を切り替えます
+- Dashboard の **Websites → freshberrymarket.com → DNS** でレコードを確認できます
+
+設定ファイルの見本: `deploy/cloudflare/tunnel/config.example.yml`
+
 ## 補足
 
 - 初回起動時に DB と初期商品が作られます
