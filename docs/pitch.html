@@ -9,16 +9,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --berry: #245a8c;
-      --berry-deep: #143a5c;
-      --leaf: #2f6a48;
-      --leaf-soft: #e6f3eb;
-      --paper: #eef4f8;
-      --ink: #152530;
-      --muted: #5a6d7c;
-      --line: #c5d4e2;
+      --berry: #2c4578;
+      --berry-deep: #1e325c;
+      --leaf: #3d7a55;
+      --leaf-soft: #e7f3ec;
+      --paper: #f7fafc;
+      --ink: #243040;
+      --muted: #5a6b7c;
+      --line: #d5e0ec;
       --white: #ffffff;
-      --shadow: 0 14px 40px rgba(20, 58, 92, 0.1);
+      --shadow: 0 14px 40px rgba(30, 50, 92, 0.1);
     }
 
     * { box-sizing: border-box; }
@@ -286,8 +286,8 @@
         <div class="slide-inner">
           <p class="time-badge">約10分</p>
           <h1>FRESHBERRYMARKET</h1>
-          <p class="tagline">Farm to Palm</p>
-          <p class="lead">ブルーベリー直売の簡易 EC<br />丹野美紗 ｜ Flask + SQLite</p>
+          <p class="tagline">Farm to Palm — 旬のブルーベリーを、そのままお届け。</p>
+          <p class="lead">ブルーベリー直売の簡易 EC<br />丹野美紗 ｜ Flask + SQLite + Stripe</p>
           <div class="agenda">
             <div><span>1分</span>自己紹介・理由</div>
             <div><span>2分</span>ターゲット・課題</div>
@@ -305,11 +305,11 @@
           <h2>1. 基本情報</h2>
           <ul class="points">
             <li>作成者：丹野美紗</li>
-            <li>技術：Python / Flask / SQLite / HTML / CSS</li>
-            <li>開発：http://127.0.0.1:8000/（未デプロイ）</li>
+            <li>技術：Python / Flask / SQLite / Stripe / HTML / CSS</li>
+            <li>公開：https://freshberrymarket.com/（Cloudflare Tunnel・PC起動中）</li>
             <li>GitHub：misamisa683269/flask_FRESHBERRYMARKET_app</li>
           </ul>
-          <p class="sub">作った理由：「畑から手のひらへ」を小さな Web ショップとして自分で実装したかった</p>
+          <p class="sub">作った理由：「畑から手のひらへ」を、注文〜決済まで一通り動く小さな EC として実装したかった</p>
         </div>
       </section>
 
@@ -341,11 +341,11 @@
         <div class="slide-inner">
           <p class="time-badge">3</p>
           <h2>3. アプリの概要</h2>
-          <p class="lead">商品を探してカートに入れ、配送先を登録して注文できる簡易 EC。管理者は商品・在庫・注文も扱えます。</p>
+          <p class="lead">商品を探してカートに入れ、配送先入力のあと Stripe で支払い、注文を確定できる簡易 EC。管理者は商品・在庫・注文・管理者追加も扱えます。</p>
           <ul class="points">
-            <li>商品・カート・注文・送料</li>
-            <li>レビュー・お気に入り・問い合わせ</li>
-            <li>管理者機能・キャンセル／返品</li>
+            <li>商品・カート・送料・Stripe テスト決済</li>
+            <li>郵便番号住所検索・レビュー・お気に入り</li>
+            <li>管理者追加／削除・キャンセル／返品・パスワード再設定</li>
           </ul>
         </div>
       </section>
@@ -365,12 +365,12 @@
             <div class="card">
               <h3>このアプリ</h3>
               <ul>
-                <li>Webで一覧〜注文まで一連</li>
-                <li>在庫チェック・ステータス管理</li>
+                <li>Webで一覧〜決済まで一連</li>
+                <li>在庫・ステータス・Stripeテスト</li>
               </ul>
             </div>
           </div>
-          <p class="sub">強み：最小構成で操作が簡単　／　限界：決済・本番運用はこれから</p>
+          <p class="sub">強み：最小構成で一連の購入体験　／　限界：常時サーバー・本番決済・実メールはこれから</p>
         </div>
       </section>
 
@@ -383,7 +383,7 @@
             <li>消費者は基本無料</li>
             <li>収益案：月額 / 手数料 / 導入支援</li>
           </ul>
-          <p class="sub">無料＝閲覧・注文　｜　有料候補＝実メール・決済・複数店舗</p>
+          <p class="sub">無料＝閲覧・注文（テスト決済）　｜　有料候補＝実メール・本番決済・複数店舗</p>
         </div>
       </section>
 
@@ -416,20 +416,21 @@
             <div class="card">
               <h3>買う人</h3>
               <ol class="points">
-                <li>ログイン</li>
-                <li>検索 → 詳細</li>
-                <li>カート → 注文</li>
+                <li>ログイン → 検索 → 詳細</li>
+                <li>カート → 郵便番号検索</li>
+                <li>Stripe で支払い完了</li>
               </ol>
             </div>
             <div class="card">
               <h3>管理者</h3>
               <ol class="points">
-                <li>ログイン</li>
-                <li>商品 or ステータス</li>
-                <li>問い合わせ確認</li>
+                <li>ログイン → 在庫編集</li>
+                <li>注文ステータス変更</li>
+                <li>管理者追加／問い合わせ</li>
               </ol>
             </div>
           </div>
+          <p class="sub">デモURL：https://freshberrymarket.com/（Tunnel 起動時）</p>
         </div>
       </section>
 
@@ -438,9 +439,9 @@
           <p class="time-badge">8・2分</p>
           <h2>8. 工夫したところ</h2>
           <ul class="points">
-            <li>注文と明細テーブルを分離</li>
-            <li>在庫の減算と戻し（二重防止）</li>
-            <li>CSRF・パスワードハッシュ・権限分け</li>
+            <li>Stripe Checkout と注文確定のつなぎ（二重注文防止）</li>
+            <li>在庫の減算と戻し／郵便番号から住所自動入力</li>
+            <li>CSRF・ハッシュ・管理者追加削除・パスワード再設定</li>
           </ul>
         </div>
       </section>
@@ -450,9 +451,9 @@
           <p class="time-badge">9</p>
           <h2>9. 苦労したところ</h2>
           <ul class="points">
-            <li>カートと注文データのつなぎ</li>
-            <li>CSRF 後の全フォーム対応</li>
-            <li>在庫戻し・ボタン見た目の不具合</li>
+            <li>決済成功後にだけ注文を確定する流れ</li>
+            <li>CSRF 対応と、お気に入り導線の見やすさ</li>
+            <li>ドメイン公開（Tunnel）とローカル起動の関係</li>
           </ul>
           <p class="sub">学び：現象 → 原因の場所 → 再現、の順で切り分ける</p>
         </div>
@@ -463,9 +464,9 @@
           <p class="time-badge">10・1分</p>
           <h2>10. 今後 ／ まとめ</h2>
           <ul class="points">
-            <li>次：デプロイ・実メール・決済</li>
-            <li>解決したいこと：小さな直売の注文・在庫を見える化</li>
-            <li>学び：EC を一気通貫で自作する経験</li>
+            <li>次：常時サーバー公開・実メール・本番決済</li>
+            <li>解決したいこと：小さな直売の注文・在庫・決済を見える化</li>
+            <li>学び：検索〜決済〜公開まで一気通貫で自作した経験</li>
           </ul>
         </div>
       </section>
@@ -473,9 +474,11 @@
       <section class="slide center">
         <div class="slide-inner">
           <h1>Thank you</h1>
-          <p class="tagline">Farm to Palm</p>
+          <p class="tagline">Farm to Palm — 旬のブルーベリーを、そのままお届け。</p>
           <p class="lead">丹野美紗</p>
           <p class="sub">
+            <a href="https://freshberrymarket.com/" target="_blank" rel="noopener">サイト</a>
+            ｜
             <a href="https://github.com/misamisa683269/flask_FRESHBERRYMARKET_app" target="_blank" rel="noopener">GitHub</a>
             ｜ Q&amp;A 歓迎
           </p>
