@@ -1231,8 +1231,8 @@ def is_admin():
 
 def require_admin():
     if current_user_id() is None:
-        flash("ログインが必要です。", "error")
-        return redirect(url_for("login"))
+        flash("管理者ログインが必要です。", "error")
+        return redirect(url_for("admin_login"))
     if not is_admin():
         flash("管理者のみ操作できます。", "error")
         return redirect(url_for("products"))
@@ -1297,6 +1297,8 @@ def login():
         user = get_user_by_username(username)
         if user is None or not check_password_hash(user["password_hash"], password):
             error = "ユーザー名またはパスワードが違います。"
+        elif (user["role"] or "user") == "admin":
+            error = "管理者アカウントは管理者ログインから入ってください。"
         else:
             session["user_id"] = user["id"]
             session["username"] = user["username"]
@@ -1304,6 +1306,26 @@ def login():
             flash("ログインしました。", "success")
             return redirect(url_for("index"))
     return render_template("login.html", error=error)
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        user = get_user_by_username(username)
+        if user is None or not check_password_hash(user["password_hash"], password):
+            error = "ユーザー名またはパスワードが違います。"
+        elif (user["role"] or "user") != "admin":
+            error = "この画面は管理者専用です。一般の方は通常のログインをご利用ください。"
+        else:
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            session["role"] = "admin"
+            flash("管理者としてログインしました。", "success")
+            return redirect(url_for("admin_orders"))
+    return render_template("admin_login.html", error=error)
 
 
 @app.route("/forgot-password", methods=["GET", "POST"])

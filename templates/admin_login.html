@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}ログイン | FRESHBERRYMARKET{% endblock %}
+{% block title %}管理者ログイン | FRESHBERRYMARKET{% endblock %}
 
 {% block content %}
-<h1>ログイン</h1>
-<p class="muted">会員のお客様向けログインです。</p>
+<h1>管理者ログイン</h1>
+<p class="muted">店舗管理用のログインです。一般のお客様は通常のログインをご利用ください。</p>
 {% if error %}
 <p class="error">{{ error }}</p>
 {% endif %}
@@ -22,10 +22,6 @@
       <input type="password" name="password" required autocomplete="current-password" />
     </label>
   </div>
-  <button type="submit">ログイン</button>
+  <button type="submit">管理者としてログイン</button>
 </form>
-<p class="muted" style="margin-top: 1rem">
-  <a href="{{ url_for('forgot_password') }}">パスワードを忘れた場合</a>
-</p>
-<p class="muted"><a href="{{ url_for('register') }}">新規登録はこちら</a></p>
 {% endblock %}
