@@ -139,6 +139,36 @@ flask_FRESHBERRYMARKET_app/
 └── products.db         # SQLite（起動時作成・Git 管理外）
 ```
 
+## 常時公開（VPS + Cloudflare DNS）【推奨】
+
+Cursor / 自宅PCを閉じてもサイトを開けるようにするには、Ubuntu VPS に移します。
+
+詳しい手順: [`deploy/vps/README.md`](deploy/vps/README.md)
+
+要約:
+
+1. Ubuntu VPS を契約し SSH で入る
+2. リポジトリを clone してセットアップ
+
+```bash
+git clone https://github.com/misamisa683269/flask_FRESHBERRYMARKET_app.git /var/www/freshberrymarket
+cd /var/www/freshberrymarket
+sudo bash deploy/vps/setup-ubuntu.sh
+sudo nano /var/www/freshberrymarket/.env   # Stripe キー等
+sudo systemctl restart freshberrymarket
+```
+
+3. Cloudflare DNS で `freshberrymarket.com` を **VPS の IP（Aレコード）** に向ける  
+   （自宅 Tunnel 用 CNAME は削除）
+4. 以降の更新: `sudo bash deploy/vps/deploy.sh`
+
+含まれるファイル:
+
+- `deploy/vps/setup-ubuntu.sh` … 初回セットアップ
+- `deploy/vps/deploy.sh` … 更新
+- `deploy/vps/freshberrymarket.service` … systemd
+- `deploy/vps/nginx-freshberrymarket.conf` … nginx
+
 ## Cloudflare へのデプロイ（Containers）
 
 Cloudflare Containers（Workers Paid が必要）で公開できます。  
@@ -198,7 +228,7 @@ chmod +x scripts/setup-cloudflare-tunnel.sh
 
 注意:
 - **このPCと `python app.py` / トンネルが動いている間だけ**公開されます
-- 常時公開したい場合は、あとで VPS や Containers へ移し、DNS の向き先を切り替えます
+- **常時公開は [VPS 手順](deploy/vps/README.md) を使ってください**
 - Dashboard の **Websites → freshberrymarket.com → DNS** でレコードを確認できます
 
 設定ファイルの見本: `deploy/cloudflare/tunnel/config.example.yml`
