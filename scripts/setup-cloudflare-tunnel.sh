@@ -10,10 +10,17 @@ CF_DIR="${HOME}/.cloudflared"
 
 echo "==> 1) ローカルアプリ確認 (${LOCAL_URL})"
 if ! curl -fsS -o /dev/null "${LOCAL_URL}/"; then
-  echo "先に別ターミナルでアプリを起動してください: python app.py"
+  echo "先に別ターミナルでアプリを起動してください: .venv/bin/python app.py"
   exit 1
 fi
 echo "OK: アプリ応答あり"
+
+# 二重起動は Cloudflare 1033 / 502 の原因になる
+if pgrep -f "cloudflared tunnel run ${TUNNEL_NAME}" >/dev/null 2>&1; then
+  echo "既存の ${TUNNEL_NAME} トンネルを停止してから起動します"
+  pkill -f "cloudflared tunnel run ${TUNNEL_NAME}" 2>/dev/null || true
+  sleep 1
+fi
 
 echo "==> 2) Cloudflare ログイン（ブラウザが開きます）"
 if [[ ! -f "${CF_DIR}/cert.pem" ]]; then

@@ -2047,4 +2047,6 @@ def admin_order_status(order_id):
 init_db()
 
 if __name__ == "__main__":
-    app.run(port=8000, debug=True)
+    # Tunnel 経由公開時、reloader の二重プロセス瞬間停止が 502 になりやすい
+    debug = APP_ENV != "production"
+    app.run(host="127.0.0.1", port=8000, debug=debug, use_reloader=False)

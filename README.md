@@ -206,24 +206,28 @@ cloudflared tunnel --url http://127.0.0.1:8000
 `freshberrymarket.com` を、このPCで動いている Flask に向けます。
 
 1. Cloudflare Dashboard の **Workers & Pages** 検索欄は空でOK（Clear）
-2. ターミナル A でアプリ起動:
+2. 初回だけトンネル設定（Cloudflare ログインあり）:
 
 ```bash
-python app.py
+chmod +x scripts/setup-cloudflare-tunnel.sh scripts/run-public.sh
+# 別ターミナルでアプリを起動してから:
+.venv/bin/python app.py
+./scripts/setup-cloudflare-tunnel.sh
 ```
 
-3. ターミナル B でトンネル設定＆起動:
+3. 2回目以降は、この1本で公開（Flask 未起動なら自動起動）:
 
 ```bash
-chmod +x scripts/setup-cloudflare-tunnel.sh
-./scripts/setup-cloudflare-tunnel.sh
+./scripts/run-public.sh
 ```
 
 初回はブラウザで Cloudflare ログインと、対象ゾーン（`freshberrymarket.com`）の許可が出ます。  
 成功すると DNS に CNAME が追加され、`https://freshberrymarket.com` で開けます。
 
 注意:
-- **このPCと `python app.py` / トンネルが動いている間だけ**公開されます
+- **このPCと Flask / トンネルが動いている間だけ**公開されます
+- **`cloudflared` は同時に1本だけ**（二重起動は 1033 / 502 の原因）
+- アプリは必ず `.venv/bin/python app.py`（システムの `python` だと dotenv 不足で落ちる）
 - **常時公開は [VPS 手順](deploy/vps/README.md) を使ってください**
 - Dashboard の **Websites → freshberrymarket.com → DNS** でレコードを確認できます
 
