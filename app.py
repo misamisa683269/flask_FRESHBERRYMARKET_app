@@ -389,6 +389,35 @@ def get_user_by_username(username):
     return user
 
 
+def update_username(user_id, new_username):
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE users SET username = ? WHERE id = ?",
+            (new_username, user_id),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        return False
+    conn.close()
+    return True
+
+
+def get_admin_users():
+    conn = get_db()
+    users = conn.execute(
+        """
+        SELECT id, username
+        FROM users
+        WHERE role = 'admin'
+        ORDER BY id
+        """
+    ).fetchall()
+    conn.close()
+    return users
+
+
 def build_order_confirmation_email(order_id, items, subtotal, shipping_fee, total, shipping):
     lines = [
         "FRESHBERRYMARKET をご利用いただきありがとうございます。",
@@ -1037,6 +1066,35 @@ def logout():
     return redirect(url_for("index"))
 
 
+@app.route("/account", methods=["GET", "POST"])
+def account():
+    user_id = current_user_id()
+    if user_id is None:
+        flash("ログインが必要です。", "error")
+        return redirect(url_for("login"))
+
+    error = None
+    if request.method == "POST":
+        new_username = request.form.get("username", "").strip()
+        if not new_username:
+            error = "ユーザー名を入力してください。"
+        elif new_username == session.get("username"):
+            flash("ユーザー名は変更されていません。", "success")
+            return redirect(url_for("account"))
+        elif update_username(user_id, new_username):
+            session["username"] = new_username
+            flash("ユーザー名を変更しました。", "success")
+            return redirect(url_for("account"))
+        else:
+            error = "そのユーザー名はすでに使われています。"
+
+    return render_template(
+        "account.html",
+        error=error,
+        username=session.get("username", ""),
+    )
+
+
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_DIR, filename)
@@ -1595,6 +1653,35 @@ def contact():
             return redirect(url_for("contact"))
 
     return render_template("contact.html", form=form, error=error)
+
+
+@app.route("/admin/users/new", methods=["GET", "POST"])
+def admin_user_new():
+    blocked = require_admin()
+    if blocked is not None:
+        return blocked
+
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        if not username or not password:
+            error = "ユーザー名とパスワードを入力してください。"
+        elif len(password) < MIN_PASSWORD_LENGTH:
+            error = f"パスワードは{MIN_PASSWORD_LENGTH}文字以上にしてください。"
+        else:
+            user_id = create_user(username, password, role="admin")
+            if user_id is None:
+                error = "そのユーザー名はすでに使われています。"
+            else:
+                flash(f"管理者「{username}」を追加しました。", "success")
+                return redirect(url_for("admin_user_new"))
+
+    return render_template(
+        "admin_user_new.html",
+        error=error,
+        admins=get_admin_users(),
+    )
 
 
 @app.route("/admin/contacts")

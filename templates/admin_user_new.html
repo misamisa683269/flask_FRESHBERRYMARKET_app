@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}管理者アカウント追加 | FRESHBERRYMARKET{% endblock %}
+
+{% block content %}
+<h1>管理者アカウント追加</h1>
+<p class="muted">既存の管理者だけが、新しい管理者を追加できます。</p>
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+<form method="post">
+  {% include "_csrf.html" %}
+  <div class="form-field">
+    <label>
+      ユーザー名:
+      <input type="text" name="username" required autocomplete="off" />
+    </label>
+  </div>
+  <div class="form-field">
+    <label>
+      パスワード（8文字以上）:
+      <input type="password" name="password" minlength="8" required autocomplete="new-password" />
+    </label>
+  </div>
+  <button type="submit">管理者を追加</button>
+</form>
+
+{% if admins %}
+<h2>登録済みの管理者</h2>
+<ul>
+  {% for admin in admins %}
+  <li>{{ admin.username }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}
