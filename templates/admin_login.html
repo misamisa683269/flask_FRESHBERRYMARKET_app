@@ -24,4 +24,17 @@
   </div>
   <button type="submit">管理者としてログイン</button>
 </form>
+{% if is_admin %}
+<p class="muted" style="margin-top: 1rem">
+  <a href="{{ url_for('admin_user_new') }}">管理者の新規登録へ</a>
+</p>
+{% else %}
+<p class="muted" style="margin-top: 1rem">
+  管理者の新規登録は、ログイン後にナビの「管理者の新規登録」から行えます。
+</p>
+<p class="muted">
+  初めて管理者アカウントが必要な場合は、既存の管理者に追加を依頼してください。
+</p>
+<p class="muted"><a href="{{ url_for('login') }}">会員ログインはこちら</a></p>
+{% endif %}
 {% endblock %}

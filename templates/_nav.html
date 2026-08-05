@@ -10,7 +10,7 @@
   <a href="{{ url_for('product_new') }}">商品を追加</a>
   <a href="{{ url_for('admin_orders') }}">注文管理</a>
   <a href="{{ url_for('admin_contacts') }}">お問い合わせ管理</a>
-  <a href="{{ url_for('admin_user_new') }}">管理者追加</a>
+  <a href="{{ url_for('admin_user_new') }}">管理者の新規登録</a>
   {% endif %}
   {% if is_logged_in %}
   <span class="nav-user">{{ current_username }}さん</span>

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}管理者アカウント追加 | FRESHBERRYMARKET{% endblock %}
+{% block title %}管理者の新規登録 | FRESHBERRYMARKET{% endblock %}
 
 {% block content %}
-<h1>管理者アカウント追加</h1>
-<p class="muted">既存の管理者だけが、新しい管理者を追加・削除できます。</p>
+<h1>管理者の新規登録</h1>
+<p class="muted">既存の管理者だけが、新しい管理者を登録・削除できます。</p>
 {% if error %}
 <p class="error">{{ error }}</p>
 {% endif %}
@@ -28,7 +28,7 @@
       <input type="password" name="password" minlength="8" required autocomplete="new-password" />
     </label>
   </div>
-  <button type="submit">管理者を追加</button>
+  <button type="submit">管理者を登録</button>
 </form>
 
 {% if admins %}
