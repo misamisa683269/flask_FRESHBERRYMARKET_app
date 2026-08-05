@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}FRESHBERRYMARKET{% endblock %}</title>
+    <title>{% block title %}フレッシュベリー{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,9 +17,10 @@
       <header class="site-header">
         <div class="header-brand">
           <p class="brand">
-            <a href="{{ url_for('index') }}">FRESHBERRYMARKET</a>
+            <a href="{{ url_for('index') }}">フレッシュベリー</a>
           </p>
-          <p class="tagline">Farm to Palm</p>
+          <p class="brand-en">FRESHBERRYMARKET</p>
+          <p class="tagline">畑から、手のひらへ。</p>
           <p class="brand-ja">旬のブルーベリーを、そのままお届け。</p>
         </div>
         {% include "_nav.html" %}
@@ -39,7 +40,7 @@
       </main>
 
       <footer class="site-footer">
-        <p>FRESHBERRYMARKET — Farm to Palm</p>
+        <p>フレッシュベリー — 畑から、手のひらへ。</p>
       </footer>
     </div>
   </body>

@@ -93,13 +93,22 @@ a:hover {
   text-decoration: none;
 }
 
+.brand-en {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
 .tagline {
   margin: 0.3rem 0 0;
   color: var(--leaf);
   font-size: 0.84rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .brand-ja {
